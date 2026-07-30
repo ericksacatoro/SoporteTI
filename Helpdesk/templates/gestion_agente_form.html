@@ -1,0 +1,88 @@
+{% extends 'plantillaPrincipal.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="card">
+    <div class="card-header"><h3>{{ title }}</h3></div>
+    <div class="card-body">
+      <form method="post" id="agentForm">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label>Usuario *</label>
+          <input type="text" name="username" class="form-control" value="{{ username|default:'' }}" required>
+        </div>
+        {% if not agent %}
+          <div class="mb-3">
+            <label>Contraseña *</label>
+            <input type="password" name="password" class="form-control" required>
+          </div>
+        {% endif %}
+        <div class="mb-3">
+          <label>Email *</label>
+          <input type="email" name="email" class="form-control" value="{{ email|default:'' }}" required>
+        </div>
+        <div class="mb-3">
+          <label>Nombre *</label>
+          <input type="text" name="first_name" class="form-control" value="{{ first_name|default:'' }}" required>
+        </div>
+        <div class="mb-3">
+          <label>Apellido *</label>
+          <input type="text" name="last_name" class="form-control" value="{{ last_name|default:'' }}" required>
+        </div>
+        <div class="mb-3">
+          <label>Rol</label>
+          <input type="text" name="role" class="form-control" value="{{ role|default:'Analista' }}">
+        </div>
+        <div class="mb-3">
+          <label>Especialidad</label>
+          <select name="speciality" class="form-select">
+            <option value="Redes" {% if speciality == 'Redes' %}selected{% endif %}>Redes</option>
+            <option value="Hardware" {% if speciality == 'Hardware' %}selected{% endif %}>Hardware</option>
+            <option value="Software" {% if speciality == 'Software' %}selected{% endif %}>Software</option>
+            <option value="Bases de datos" {% if speciality == 'Bases de datos' %}selected{% endif %}>Bases de datos</option>
+            <option value="Servidores" {% if speciality == 'Servidores' %}selected{% endif %}>Servidores</option>
+            <option value="Seguridad" {% if speciality == 'Seguridad' %}selected{% endif %}>Seguridad</option>
+            <option value="Otros" {% if speciality == 'Otros' %}selected{% endif %}>Otros</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label>Extensión</label>
+          <input type="text" name="extension" class="form-control" value="{{ extension|default:'' }}">
+        </div>
+        <div class="mb-3 form-check">
+          <input type="checkbox" class="form-check-input" name="is_available" id="is_available" {% if is_available %}checked{% endif %}>
+          <label class="form-check-label" for="is_available">Disponible</label>
+        </div>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <a href="/gestion/agentes/" class="btn btn-secondary">Cancelar</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  $(document).ready(function() {
+    $('#agentForm').validate({
+      rules: {
+        username: 'required',
+        email: { required: true, email: true },
+        first_name: 'required',
+        last_name: 'required',
+        {% if not agent %}
+        password: { required: true, minlength: 6 },
+        {% endif %}
+      },
+      messages: {
+        username: 'El usuario es obligatorio',
+        email: 'Ingrese un email válido',
+        first_name: 'El nombre es obligatorio',
+        last_name: 'El apellido es obligatorio',
+        password: { required: 'La contraseña es obligatoria', minlength: 'Debe tener al menos 6 caracteres' },
+      }
+    });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends 'plantillaPrincipal.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="card">
+    <div class="card-header"><h3>{{ title }}</h3></div>
+    <div class="card-body">
+      <form method="post" id="equipmentForm">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label>Nombre *</label>
+          <input type="text" name="name" class="form-control" value="{{ equipment.name|default:'' }}" required>
+        </div>
+        <div class="mb-3">
+          <label>Tipo</label>
+          <select name="equipment_type" class="form-select">
+            <option value="Laptop" {% if equipment.equipment_type == 'Laptop' %}selected{% endif %}>Laptop</option>
+            <option value="Desktop" {% if equipment.equipment_type == 'Desktop' %}selected{% endif %}>Desktop</option>
+            <option value="Servidor" {% if equipment.equipment_type == 'Servidor' %}selected{% endif %}>Servidor</option>
+            <option value="Impresora" {% if equipment.equipment_type == 'Impresora' %}selected{% endif %}>Impresora</option>
+            <option value="Router" {% if equipment.equipment_type == 'Router' %}selected{% endif %}>Router</option>
+            <option value="Switch" {% if equipment.equipment_type == 'Switch' %}selected{% endif %}>Switch</option>
+            <option value="Otro" {% if equipment.equipment_type == 'Otro' %}selected{% endif %}>Otro</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label>Número serial *</label>
+          <input type="text" name="serial_number" class="form-control" value="{{ equipment.serial_number|default:'' }}" required>
+        </div>
+        <div class="mb-3">
+          <label>Estado</label>
+          <select name="status" class="form-select">
+            <option value="Operativo" {% if equipment.status == 'Operativo' %}selected{% endif %}>Operativo</option>
+            <option value="En reparación" {% if equipment.status == 'En reparación' %}selected{% endif %}>En reparación</option>
+            <option value="Fuera de servicio" {% if equipment.status == 'Fuera de servicio' %}selected{% endif %}>Fuera de servicio</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label>Propietario</label>
+          <select name="owner" class="form-select">
+            <option value="">Ninguno</option>
+            {% for cust in customers %}
+              <option value="{{ cust.id }}" {% if equipment.owner.id == cust.id %}selected{% endif %}>{{ cust.full_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label>Agente asignado</label>
+          <select name="assigned_agent" class="form-select">
+            <option value="">Ninguno</option>
+            {% for ag in agents %}
+              <option value="{{ ag.id }}" {% if equipment.assigned_agent.id == ag.id %}selected{% endif %}>{{ ag }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label>Fecha compra</label>
+          <input type="date" name="purchase_date" class="form-control" value="{{ equipment.purchase_date|default:'' }}">
+        </div>
+        <div class="mb-3">
+          <label>Descripción</label>
+          <textarea name="description" class="form-control" rows="3">{{ equipment.description|default:'' }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <a href="/gestion/equipos/" class="btn btn-secondary">Cancelar</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  $(document).ready(function() {
+    $('#equipmentForm').validate({
+      rules: {
+        name: 'required',
+        serial_number: { required: true },
+        equipment_type: 'required',
+      },
+      messages: {
+        name: 'El nombre es obligatorio',
+        serial_number: 'El número serial es obligatorio',
+        equipment_type: 'Seleccione un tipo',
+      }
+    });
+  });
+</script>
+{% endblock %}

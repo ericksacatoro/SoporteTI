@@ -1,0 +1,212 @@
+{% extends "plantillaPrincipal.html" %}
+{% block title %}Dashboard – Helpdesk TI{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+  .stat-card  { border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(1,41,112,.08); }
+  .kpi-number { font-size: 2.2rem; font-weight: 800; line-height: 1; margin-bottom: .2rem; }
+  .kpi-label  { font-size: .85rem; color: #6c757d; font-weight: 500; }
+  .chart-box  { position: relative; height: 280px; }
+  .sla-bar    { height: 12px; border-radius: 6px; overflow: hidden; background: #e9ecef; }
+  .sla-bar-inner { height: 100%; border-radius: 6px; transition: width .6s ease; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ═══ KPIs ═══════════════════════════════════════════════════════════════ -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-2">
+    <div class="card stat-card text-center p-3">
+      <div class="kpi-number text-primary">{{ total }}</div>
+      <div class="kpi-label">Total</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-2">
+    <div class="card stat-card text-center p-3">
+      <div class="kpi-number text-info">{{ open_t }}</div>
+      <div class="kpi-label">Abiertos</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-2">
+    <div class="card stat-card text-center p-3">
+      <div class="kpi-number text-warning">{{ in_process }}</div>
+      <div class="kpi-label">En proceso</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-2">
+    <div class="card stat-card text-center p-3">
+      <div class="kpi-number text-success">{{ resolved }}</div>
+      <div class="kpi-label">Resueltos</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-2">
+    <div class="card stat-card text-center p-3">
+      <div class="kpi-number text-secondary">{{ pending }}</div>
+      <div class="kpi-label">Pendientes</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-2">
+    <div class="card stat-card text-center p-3">
+      <div class="kpi-number text-danger">{{ overdue }}</div>
+      <div class="kpi-label">Vencidos</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SLA + MTTR ═════════════════════════════════════════════════════════ -->
+<div class="row g-3 mb-4">
+
+  <!-- Cumplimiento SLA -->
+  <div class="col-lg-6">
+    <div class="card stat-card h-100">
+      <div class="card-header bg-white border-0 fw-semibold">
+        <i class="bi bi-shield-check text-success me-2"></i>Cumplimiento SLA
+      </div>
+      <div class="card-body">
+        <div class="chart-box mb-3">
+          <canvas id="chart-sla"></canvas>
+        </div>
+
+        <!-- Desglose numérico -->
+        <div class="row g-2 text-center mt-2">
+          <div class="col-4">
+            <div class="fw-bold text-success" style="font-size:1.4rem">{{ sla_cumplido }}</div>
+            <div class="small text-muted">Cumplidos</div>
+          </div>
+          <div class="col-4">
+            <div class="fw-bold text-danger" style="font-size:1.4rem">{{ sla_incumplido }}</div>
+            <div class="small text-muted">Incumplidos</div>
+          </div>
+          <div class="col-4">
+            <div class="fw-bold text-secondary" style="font-size:1.4rem">{{ sla_pendiente }}</div>
+            <div class="small text-muted">Pendientes</div>
+          </div>
+        </div>
+
+        <div class="text-center mt-3">
+          <span class="fw-bold fs-4 text-success">{{ sla_compliance }}%</span>
+          <span class="text-muted small ms-2">de cumplimiento ({{ sla_total }} con SLA)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MTTR por prioridad -->
+  <div class="col-lg-6">
+    <div class="card stat-card h-100">
+      <div class="card-header bg-white border-0 fw-semibold">
+        <i class="bi bi-stopwatch text-primary me-2"></i>MTTR por Prioridad
+        <small class="text-muted fw-normal ms-2">(tiempo medio de resolución)</small>
+      </div>
+      <div class="card-body">
+        <div class="chart-box mb-3">
+          <canvas id="chart-mttr"></canvas>
+        </div>
+        <div class="text-center">
+          <span class="fw-bold fs-4 text-primary">{{ mttr_hours }} h</span>
+          <span class="text-muted small ms-2">promedio global</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function () {
+
+  const SLA_CUMPLIDO   = {{ sla_cumplido }};
+  const SLA_INCUMPLIDO = {{ sla_incumplido }};
+  const SLA_PENDIENTE  = {{ sla_pendiente }};
+  const MTTR_DATA      = {{ mttr_by_priority|safe }};
+
+  const BASE = { responsive: true, maintainAspectRatio: false };
+
+  // ═══ Gráfica SLA: doughnut con 3 segmentos ════════════════════════════
+  new Chart(document.getElementById('chart-sla'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Cumplido', 'Incumplido', 'Pendiente'],
+      datasets: [{
+        data: [SLA_CUMPLIDO, SLA_INCUMPLIDO, SLA_PENDIENTE],
+        backgroundColor: ['#198754', '#dc3545', '#adb5bd'],
+        borderWidth: 2,
+        borderColor: '#fff'
+      }]
+    },
+    options: {
+      ...BASE,
+      cutout: '62%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { boxWidth: 13, font: { size: 12 }, padding: 14 }
+        },
+        tooltip: {
+          callbacks: {
+            label: function (ctx) {
+              const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+              const pct   = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : 0;
+              return ` ${ctx.label}: ${ctx.parsed} (${pct}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // ═══ Gráfica MTTR: barras horizontales por prioridad ══════════════════
+  const PRIORITY_COLORS = {
+    'Crítica': '#dc3545',
+    'Alta':    '#fd7e14',
+    'Media':   '#0d6efd',
+    'Baja':    '#6c757d'
+  };
+
+  new Chart(document.getElementById('chart-mttr'), {
+    type: 'bar',
+    data: {
+      labels: MTTR_DATA.map(function (d) {
+        return d.priority + ' (' + d.count + ' ticket' + (d.count !== 1 ? 's' : '') + ')';
+      }),
+      datasets: [{
+        label: 'MTTR (horas)',
+        data: MTTR_DATA.map(function (d) { return d.mttr_hours; }),
+        backgroundColor: MTTR_DATA.map(function (d) {
+          return PRIORITY_COLORS[d.priority] || '#adb5bd';
+        }),
+        borderRadius: 6,
+        barThickness: 32
+      }]
+    },
+    options: {
+      ...BASE,
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function (ctx) {
+              return ' ' + ctx.parsed.x.toFixed(1) + ' h promedio';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          title: { display: true, text: 'Horas' },
+          ticks: { precision: 1 }
+        },
+        y: { ticks: { font: { size: 12 } } }
+      }
+    }
+  });
+
+});
+</script>
+{% endblock %}

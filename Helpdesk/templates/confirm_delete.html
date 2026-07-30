@@ -1,0 +1,33 @@
+{% extends "plantillaPrincipal.html" %}
+{% block title %}Confirmar eliminación – Helpdesk TI{% endblock %}
+{% block page_title %}Confirmar eliminación{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-4">
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm border-danger border-top border-4">
+      <div class="card-body text-center py-5">
+        <div class="mb-3">
+          <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size:3.5rem"></i>
+        </div>
+        <h4 class="fw-bold mb-2">¿Confirmar eliminación?</h4>
+        <p class="text-muted mb-4">
+          Estás a punto de eliminar: <strong>{{ object }}</strong><br>
+          <small>Esta acción puede ser irreversible.</small>
+        </p>
+        <div class="d-flex gap-3 justify-content-center">
+          <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger px-4">
+              <i class="bi bi-trash me-1"></i>Confirmar eliminación
+            </button>
+          </form>
+          <a href="{{ back_url|default:'javascript:history.back()' }}" class="btn btn-outline-secondary px-4">
+            <i class="bi bi-arrow-left me-1"></i>Cancelar
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

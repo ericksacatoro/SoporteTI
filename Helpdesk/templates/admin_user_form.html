@@ -1,0 +1,177 @@
+{% extends "plantillaPrincipal.html" %}
+{% block title %}{{ title }} – Helpdesk TI{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white border-0 py-3">
+        <h5 class="mb-0 fw-bold">
+          <i class="bi bi-person-circle me-2 text-primary"></i>{{ title }}
+        </h5>
+      </div>
+      <div class="card-body">
+        <form method="post" id="userForm" novalidate>
+          {% csrf_token %}
+          <div class="row g-3">
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="f-username">
+                Usuario <span class="text-danger">*</span>
+              </label>
+              <input type="text" name="username" id="f-username" class="form-control"
+                value="{% if form_data %}{{ form_data.username }}{% elif customer %}{{ customer.user.username }}{% endif %}"
+                placeholder="ej: juan.garcia" maxlength="150" required>
+              <div class="form-text">Solo letras, números, puntos, guiones y _ (min. 3 caracteres).</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="f-password">
+                Contraseña
+                {% if not customer %}<span class="text-danger">*</span>
+                {% else %}<small class="text-muted">(dejar en blanco = no cambiar)</small>{% endif %}
+              </label>
+              <input type="password" id="f-password"
+                name="{% if customer %}new_password{% else %}password{% endif %}"
+                class="form-control"
+                placeholder="{% if customer %}Nueva contraseña (opcional){% else %}Mínimo 8 caracteres{% endif %}">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="f-fullname">
+                Nombre completo <span class="text-danger">*</span>
+              </label>
+              <input type="text" name="full_name" id="f-fullname" class="form-control"
+                value="{% if form_data %}{{ form_data.full_name }}{% elif customer %}{{ customer.full_name }}{% endif %}"
+                placeholder="Juan García López" maxlength="150" required>
+              <div class="form-text">Solo letras y espacios. Sin números ni caracteres especiales.</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="f-email">
+                Correo electrónico <span class="text-danger">*</span>
+              </label>
+              <input type="email" name="email" id="f-email" class="form-control"
+                value="{% if form_data %}{{ form_data.email }}{% elif customer %}{{ customer.user.email }}{% endif %}" required>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="f-phone">Teléfono</label>
+              <input type="text" name="phone" id="f-phone" class="form-control"
+                value="{% if form_data %}{{ form_data.phone }}{% elif customer %}{{ customer.phone }}{% endif %}"
+                placeholder="+593 99 000 0000" maxlength="20">
+              <div class="form-text">Dígitos, +, -, espacios y paréntesis (7-20 caracteres).</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="f-company">Empresa</label>
+              <input type="text" name="company" id="f-company" class="form-control"
+                value="{% if form_data %}{{ form_data.company }}{% elif customer %}{{ customer.company }}{% endif %}" maxlength="100">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="f-department">Departamento</label>
+              <input type="text" name="department" id="f-department" class="form-control"
+                value="{% if form_data %}{{ form_data.department }}{% elif customer %}{{ customer.department }}{% endif %}"
+                maxlength="100">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="f-position">Cargo</label>
+              <input type="text" name="position" id="f-position" class="form-control"
+                value="{% if form_data %}{{ form_data.position }}{% elif customer %}{{ customer.position }}{% endif %}"
+                maxlength="100">
+            </div>
+
+            {% if customer %}
+            <div class="col-12">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="is_active" id="is_active"
+                  {% if customer.is_active %}checked{% endif %}>
+                <label class="form-check-label" for="is_active">Usuario activo</label>
+              </div>
+            </div>
+            {% endif %}
+
+          </div>
+
+          <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary px-4">
+              <i class="bi bi-save me-1"></i>{{ title }}
+            </button>
+            <a href="/gestion/usuarios/" class="btn btn-outline-secondary">Cancelar</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(function () {
+  // Solo letras y espacios
+  $.validator.addMethod('soloLetras', function (value) {
+    return !value || /^[A-Za-záéíóúÁÉÍÓÚñÑüÜ\s\-]+$/.test(value);
+  }, 'Solo se permiten letras, espacios y guiones.');
+
+  // Teléfono válido
+  $.validator.addMethod('telefonoValido', function (value) {
+    return !value || /^[\d\+\-\s\(\)]{7,20}$/.test(value);
+  }, 'Teléfono inválido. Use dígitos, +, -, espacios o paréntesis (7-20 caracteres).');
+
+  // Usuario válido
+  $.validator.addMethod('usuarioValido', function (value) {
+    return !value || /^[A-Za-z0-9_\.\-]{3,150}$/.test(value);
+  }, 'Solo letras, números, puntos, guiones y _ (mínimo 3 caracteres).');
+
+  $('#userForm').validate({
+    rules: {
+      username:  { required: true, usuarioValido: true },
+      full_name: { required: true, minlength: 3, soloLetras: true },
+      email:     { required: true, email: true },
+      phone:     { telefonoValido: true },
+      department:{ soloLetras: true },
+      position:  { soloLetras: true },
+      {% if not customer %}
+      password:  { required: true, minlength: 8 },
+      {% else %}
+      new_password: { minlength: 8 },
+      {% endif %}
+    },
+    messages: {
+      username:  {
+        required:     'El usuario es obligatorio.',
+        usuarioValido:'Solo letras, números, puntos, guiones y _ (mínimo 3 caracteres).'
+      },
+      full_name: {
+        required:   'El nombre completo es obligatorio.',
+        minlength:  'Mínimo 3 caracteres.',
+        soloLetras: 'Solo se permiten letras y espacios.'
+      },
+      email:        { required: 'El correo es obligatorio.', email: 'Ingresa un correo válido.' },
+      phone:        { telefonoValido: 'Teléfono inválido.' },
+      department:   { soloLetras: 'Solo se permiten letras y espacios.' },
+      position:     { soloLetras: 'Solo se permiten letras y espacios.' },
+      {% if not customer %}
+      password:     { required: 'La contraseña es obligatoria.', minlength: 'Mínimo 8 caracteres.' },
+      {% else %}
+      new_password: { minlength: 'Mínimo 8 caracteres.' },
+      {% endif %}
+    },
+    errorClass: 'is-invalid',
+    validClass: 'is-valid',
+    errorPlacement: function (error, element) {
+      error.addClass('invalid-feedback');
+      // Insertar después del form-text si existe, sino después del input
+      var ft = element.next('.form-text');
+      if (ft.length) { ft.after(error); } else { element.after(error); }
+    },
+    highlight:   function (el) { $(el).addClass('is-invalid').removeClass('is-valid'); },
+    unhighlight: function (el) { $(el).removeClass('is-invalid').addClass('is-valid'); }
+  });
+});
+</script>
+{% endblock %}

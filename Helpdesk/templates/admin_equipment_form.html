@@ -1,0 +1,151 @@
+{% extends "plantillaPrincipal.html" %}
+{% block title %}{{ title }} – Helpdesk TI{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white border-0 py-3">
+        <h5 class="mb-0 fw-bold">
+          <i class="bi bi-pc-display me-2 text-primary"></i>{{ title }}
+        </h5>
+      </div>
+      <div class="card-body">
+        <form method="post" id="equipForm" novalidate>
+          {% csrf_token %}
+          <div class="row g-3">
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="f-name">
+                Nombre <span class="text-danger">*</span>
+              </label>
+              <input type="text" name="name" id="f-name" class="form-control"
+                value="{% if form_data %}{{ form_data.name }}{% elif equipment %}{{ equipment.name }}{% endif %}"
+                placeholder="Ej: Laptop HP EliteBook" maxlength="100" required>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="f-type">
+                Tipo <span class="text-danger">*</span>
+              </label>
+              <select name="equipment_type" id="f-type" class="form-select" required>
+                {% with cur=equipment.equipment_type|default:"Otro" %}
+                <option value="Laptop"    {% if cur == 'Laptop' %}selected{% endif %}>Laptop</option>
+                <option value="Desktop"   {% if cur == 'Desktop' %}selected{% endif %}>Desktop</option>
+                <option value="Servidor"  {% if cur == 'Servidor' %}selected{% endif %}>Servidor</option>
+                <option value="Impresora" {% if cur == 'Impresora' %}selected{% endif %}>Impresora</option>
+                <option value="Router"    {% if cur == 'Router' %}selected{% endif %}>Router</option>
+                <option value="Switch"    {% if cur == 'Switch' %}selected{% endif %}>Switch</option>
+                <option value="Otro"      {% if cur == 'Otro' %}selected{% endif %}>Otro</option>
+                {% endwith %}
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="f-serial">
+                Número Serial <span class="text-danger">*</span>
+              </label>
+              <input type="text" name="serial_number" id="f-serial" class="form-control"
+                value="{% if form_data %}{{ form_data.serial_number }}{% elif equipment %}{{ equipment.serial_number }}{% endif %}"
+                placeholder="SN-2024-001" maxlength="50" required>
+              <div class="form-text">Solo letras, números, guiones y puntos (3-50 caracteres).</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="f-status">Estado</label>
+              <select name="status" id="f-status" class="form-select">
+                {% with cur=equipment.status|default:"Operativo" %}
+                <option value="Operativo"          {% if cur == 'Operativo' %}selected{% endif %}>Operativo</option>
+                <option value="En reparación"      {% if cur == 'En reparación' %}selected{% endif %}>En reparación</option>
+                <option value="Fuera de servicio"  {% if cur == 'Fuera de servicio' %}selected{% endif %}>Fuera de servicio</option>
+                {% endwith %}
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="f-owner">Propietario (Cliente)</label>
+              <select name="owner" id="f-owner" class="form-select select2">
+                <option value="">— Sin propietario —</option>
+                {% for c in customers %}
+                <option value="{{ c.pk }}"
+                  {% if equipment and equipment.owner and equipment.owner.pk == c.pk %}selected{% endif %}>
+                  {{ c.full_name }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="f-agent">Agente responsable</label>
+              <select name="assigned_agent" id="f-agent" class="form-select select2">
+                <option value="">— Sin agente —</option>
+                {% for a in agents %}
+                <option value="{{ a.pk }}"
+                  {% if equipment and equipment.assigned_agent and equipment.assigned_agent.pk == a.pk %}selected{% endif %}>
+                  {{ a }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="f-date">Fecha de compra</label>
+              <input type="date" name="purchase_date" id="f-date" class="form-control"
+                value="{% if form_data %}{{ form_data.purchase_date }}{% elif equipment and equipment.purchase_date %}{{ equipment.purchase_date|date:'Y-m-d' }}{% endif %}">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label fw-semibold" for="f-desc">Descripción</label>
+              <textarea name="description" id="f-desc" class="form-control" rows="3"
+                placeholder="Especificaciones, observaciones…">{% if form_data %}{{ form_data.description }}{% elif equipment %}{{ equipment.description }}{% endif %}</textarea>
+            </div>
+
+          </div>
+
+          <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary px-4">
+              <i class="bi bi-save me-1"></i>{{ title }}
+            </button>
+            <a href="/gestion/equipos/" class="btn btn-outline-secondary">Cancelar</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(function () {
+  $('#f-owner, #f-agent').select2({ theme: 'bootstrap-5', language: 'es', width: '100%' });
+
+  $.validator.addMethod('serialValido', function (value) {
+    return !value || /^[A-Za-z0-9\-\_\.]{3,50}$/.test(value);
+  }, 'Solo letras, números, guiones y puntos (3-50 caracteres).');
+
+  $('#equipForm').validate({
+    rules: {
+      name:           { required: true, minlength: 2, maxlength: 100 },
+      serial_number:  { required: true, serialValido: true },
+      equipment_type: { required: true },
+    },
+    messages: {
+      name:           { required: 'El nombre es obligatorio.', minlength: 'Mínimo 2 caracteres.' },
+      serial_number:  { required: 'El número serial es obligatorio.' },
+      equipment_type: { required: 'Selecciona un tipo.' },
+    },
+    errorClass: 'is-invalid',
+    validClass: 'is-valid',
+    errorPlacement: function (error, element) {
+      error.addClass('invalid-feedback');
+      var ft = element.next('.form-text');
+      if (ft.length) { ft.after(error); } else { element.after(error); }
+    },
+    highlight:   function (el) { $(el).addClass('is-invalid').removeClass('is-valid'); },
+    unhighlight: function (el) { $(el).removeClass('is-invalid').addClass('is-valid'); }
+  });
+});
+</script>
+{% endblock %}

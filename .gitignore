@@ -1,0 +1,105 @@
+
+
+# ── Credenciales y secretos ──────────────────────────────────────
+credenciales.txt
+.env
+.env.*
+!.env.example
+secrets.json
+*.key
+*.pem
+*.cert
+
+# ── Django ───────────────────────────────────────────────────────
+# Bases de datos locales
+db.sqlite3
+db.soporte
+*.db
+
+# Archivos de media subidos por usuarios
+/media/
+
+# Archivos estáticos recolectados (generados con collectstatic)
+/staticfiles/
+
+# Caché de Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*$py.class
+
+# Migraciones generadas localmente (opcional: comenta si quieres versionar migraciones)
+# Helpdesk/migrations/
+
+# Logs de Django
+*.log
+django_log/
+
+# ── Entornos virtuales ───────────────────────────────────────────
+venv/
+.venv/
+env/
+ENV/
+.virtualenv/
+
+# ── IDEs y editores ──────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+*.sublime-project
+*.sublime-workspace
+
+# ── Sistema operativo ────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+*.lnk
+
+# ── Backups y temporales ─────────────────────────────────────────
+*.backup
+*.bak
+*.tmp
+*.temp
+data_backup.json
+/backups/
+
+# ── Testing y cobertura ──────────────────────────────────────────
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+
+# ── Distribución y build ─────────────────────────────────────────
+dist/
+build/
+*.egg-info/
+*.egg
+.eggs/
+MANIFEST
+
+# ── Documentación generada ───────────────────────────────────────
+docs/_build/
+site/
+
+# ── PostgreSQL / bases de datos ──────────────────────────────────
+*.sql
+*.dump
+pg_hba.conf.backup
+
+# ── Node / frontend (si aplica) ──────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-error.log
+
+# ── Archivos de configuración locales ────────────────────────────
+local_settings.py
+SoporteTI/settings_local.py

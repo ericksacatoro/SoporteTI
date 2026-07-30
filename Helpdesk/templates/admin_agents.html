@@ -1,0 +1,121 @@
+{% extends "plantillaPrincipal.html" %}
+{% block title %}Agentes – Helpdesk TI{% endblock %}
+{% block page_title %}Agentes de Soporte{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <p class="text-muted mb-0">Agentes de soporte tecnico registrados en el sistema.</p>
+  <a href="/gestion/agentes/crear/" class="btn btn-primary btn-sm">
+    <i class="bi bi-person-plus me-1"></i>Nuevo Agente
+  </a>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table id="agentsTable" class="table table-hover table-sm align-middle mb-0">
+        <thead class="table-dark">
+          <tr>
+            <th>#</th>
+            <th>Nombre</th>
+            <th>Usuario</th>
+            <th>Email</th>
+            <th>Rol</th>
+            <th>Especialidad</th>
+            <th>Extension</th>
+            <th>Disponible</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in agents %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td class="fw-semibold">{{ a.user.get_full_name }}</td>
+            <td><code>{{ a.user.username }}</code></td>
+            <td>{{ a.user.email }}</td>
+            <td>
+              <span class="badge
+                {% if a.role == 'Supervisor' %}bg-primary
+                {% elif a.role == 'Especialista' %}bg-info text-dark
+                {% else %}bg-secondary{% endif %}">
+                {{ a.role }}
+              </span>
+            </td>
+            <td>{{ a.speciality }}</td>
+            <td>{{ a.extension|default:"—" }}</td>
+            <td>
+              {% if a.is_available %}
+              <span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>Si</span>
+              {% else %}
+              <span class="badge bg-secondary">No</span>
+              {% endif %}
+            </td>
+            <td class="text-nowrap">
+              <a href="/gestion/agentes/{{ a.pk }}/editar/"
+                 class="btn btn-icon btn-outline-secondary btn-sm" title="Editar">
+                <i class="bi bi-pencil"></i>
+              </a>
+              <button class="btn btn-icon btn-outline-danger btn-sm" title="Eliminar"
+                onclick="confirmDeleteAgent({{ a.pk }}, '{{ a.user.get_full_name|escapejs }}')">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(function () {
+  $('#agentsTable').DataTable({
+    language: {
+      url: 'https://cdn.datatables.net/plug-ins/1.13.8/i18n/es-MX.json',
+      emptyTable: 'No hay agentes registrados.'
+    },
+    pageLength: 15,
+    order: [[0, 'asc']],
+    dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+         "<'row'<'col-sm-12'B>>" +
+         "<'row'<'col-sm-12'tr>>" +
+         "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+    buttons: [
+      { extend: 'excelHtml5', text: '<i class="bi bi-file-earmark-excel me-1"></i>Excel',
+        className: 'btn btn-sm btn-success me-1', title: 'Agentes – Helpdesk TI',
+        exportOptions: { columns: ':visible:not(:last-child)' } },
+      { extend: 'pdfHtml5', text: '<i class="bi bi-file-earmark-pdf me-1"></i>PDF',
+        className: 'btn btn-sm btn-danger',title: 'Agentes – Helpdesk TI',
+        exportOptions: { columns: ':visible:not(:last-child)' } },
+    ],
+    columnDefs: [{ orderable: false, targets: -1 }]
+  });
+});
+
+function confirmDeleteAgent(pk, name) {
+  Swal.fire({
+    title: 'Eliminar agente',
+    text: '"' + name + '" sera eliminado permanentemente. Esta accion no se puede deshacer.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#dc3545',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'Eliminar',
+    cancelButtonText: 'Cancelar'
+  }).then(function (r) {
+    if (r.isConfirmed) {
+      var form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '/gestion/agentes/' + pk + '/eliminar/';
+      form.innerHTML = '<input type="hidden" name="csrfmiddlewaretoken" value="' + getCsrf() + '">';
+      document.body.appendChild(form);
+      form.submit();
+    }
+  });
+}
+</script>
+{% endblock %}

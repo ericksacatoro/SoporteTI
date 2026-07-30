@@ -1,0 +1,108 @@
+{% extends "plantillaPrincipal.html" %}
+{% block title %}Equipos TI – Helpdesk TI{% endblock %}
+{% block page_title %}Gestión de Equipos TI{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <p class="text-muted mb-0">Inventario de equipos tecnológicos registrados.</p>
+  <a href="/gestion/equipos/crear/" class="btn btn-primary btn-sm">
+    <i class="bi bi-pc-display me-1"></i>Nuevo Equipo
+  </a>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table id="equipTable" class="table table-hover table-sm align-middle mb-0">
+        <thead class="table-dark">
+          <tr>
+            <th>#</th><th>Nombre</th><th>Tipo</th><th>Serial</th>
+            <th>Estado</th><th>Propietario</th><th>Agente</th>
+            <th>F. Compra</th><th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in equipments %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td class="fw-semibold">{{ e.name }}</td>
+            <td>
+              <span class="badge bg-light text-dark border">
+                {% if e.equipment_type == 'Laptop' %}<i class="bi bi-laptop me-1"></i>
+                {% elif e.equipment_type == 'Desktop' %}<i class="bi bi-display me-1"></i>
+                {% elif e.equipment_type == 'Servidor' %}<i class="bi bi-server me-1"></i>
+                {% elif e.equipment_type == 'Impresora' %}<i class="bi bi-printer me-1"></i>
+                {% elif e.equipment_type == 'Router' %}<i class="bi bi-router me-1"></i>
+                {% else %}<i class="bi bi-hdd me-1"></i>{% endif %}
+                {{ e.equipment_type }}
+              </span>
+            </td>
+            <td><code>{{ e.serial_number }}</code></td>
+            <td>
+              <span class="badge
+                {% if e.status == 'Operativo' %}bg-success
+                {% elif e.status == 'En reparación' %}bg-warning text-dark
+                {% else %}bg-danger{% endif %}">
+                {{ e.status }}
+              </span>
+            </td>
+            <td>{{ e.owner|default:"—" }}</td>
+            <td>{{ e.assigned_agent|default:"—" }}</td>
+            <td class="small">{{ e.purchase_date|date:"d/m/Y"|default:"—" }}</td>
+            <td class="text-nowrap">
+              <a href="/gestion/equipos/{{ e.pk }}/editar/" class="btn btn-icon btn-outline-secondary btn-sm" title="Editar">
+                <i class="bi bi-pencil"></i>
+              </a>
+              <button class="btn btn-icon btn-outline-danger btn-sm" title="Eliminar"
+                onclick="confirmDeleteEquip({{ e.pk }}, '{{ e.name|escapejs }}')">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(function() {
+  $('#equipTable').DataTable({
+    language:{ url:'https://cdn.datatables.net/plug-ins/1.13.8/i18n/es-MX.json', emptyTable:'No hay equipos registrados.' },
+    pageLength:15, order:[[0,'asc']],
+    dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+         "<'row'<'col-sm-12'B>>" +
+         "<'row'<'col-sm-12'tr>>" +
+         "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+    buttons:[
+      {extend:'excelHtml5',text:'<i class="bi bi-file-earmark-excel me-1"></i>Excel',
+       className:'btn btn-sm btn-success me-1',title:'Equipos – Helpdesk TI',
+       exportOptions: { columns: ':visible:not(:last-child)' }},
+      {extend:'pdfHtml5',text:'<i class="bi bi-file-earmark-pdf me-1"></i>PDF',
+       className:'btn btn-sm btn-danger',title:'Equipos – Helpdesk TI',
+       exportOptions: { columns: ':visible:not(:last-child)' }},
+    ],
+    columnDefs:[{orderable:false,targets:-1}]
+  });
+});
+function confirmDeleteEquip(pk, name) {
+  Swal.fire({
+    title:`¿Eliminar "${name}"?`,
+    text:'Si el equipo tiene tickets asociados, no podrá eliminarse.',
+    icon:'warning',showCancelButton:true,
+    confirmButtonColor:'#dc3545',cancelButtonColor:'#6c757d',
+    confirmButtonText:'Eliminar',cancelButtonText:'Cancelar'
+  }).then(r => {
+    if (r.isConfirmed) {
+      const form = document.createElement('form');
+      form.method='POST'; form.action=`/gestion/equipos/${pk}/eliminar/`;
+      form.innerHTML=`<input type="hidden" name="csrfmiddlewaretoken" value="${getCsrf()}">`;
+      document.body.appendChild(form); form.submit();
+    }
+  });
+}
+</script>
+{% endblock %}

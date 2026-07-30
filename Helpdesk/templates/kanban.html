@@ -1,0 +1,170 @@
+{% extends "plantillaPrincipal.html" %}
+{% block title %}Kanban – Helpdesk TI{% endblock %}
+{% block page_title %}Tablero Kanban{% endblock %}
+
+{% block extra_css %}
+<style>
+  .kanban-board { display:flex; gap:16px; overflow-x:auto; padding-bottom:16px; min-height:70vh; }
+  .kanban-column { min-width:260px; flex:1; background:#f8f9fa; border-radius:12px; padding:12px; }
+  .kanban-column-header { font-weight:700; font-size:.9rem; text-transform:uppercase; letter-spacing:.5px;
+    padding:8px 12px; border-radius:8px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; }
+  .kanban-card { background:#fff; border-radius:8px; padding:12px; margin-bottom:10px;
+    box-shadow:0 1px 4px rgba(0,0,0,.08); cursor:grab; border-left:4px solid transparent; transition:box-shadow .2s; }
+  .kanban-card:active { cursor:grabbing; box-shadow:0 4px 16px rgba(0,0,0,.2); }
+  .kanban-card:hover { box-shadow:0 3px 10px rgba(0,0,0,.12); }
+  .col-critica .kanban-column-header { background:rgba(220,53,69,.15); color:#dc3545; }
+  .col-critica .kanban-card { border-left-color:#dc3545; }
+  .col-alta .kanban-column-header    { background:rgba(253,126,20,.15); color:#fd7e14; }
+  .col-alta .kanban-card             { border-left-color:#fd7e14; }
+  .col-media .kanban-column-header   { background:rgba(13,110,253,.12); color:#0d6efd; }
+  .col-media .kanban-card            { border-left-color:#0d6efd; }
+  .col-baja .kanban-column-header    { background:rgba(108,117,125,.12); color:#6c757d; }
+  .col-baja .kanban-card             { border-left-color:#6c757d; }
+  .ui-sortable-placeholder { height:80px; background:rgba(59,125,221,.08); border:2px dashed #3b7ddd; border-radius:8px; margin-bottom:10px; }
+  .kanban-card.ui-sortable-helper { transform:rotate(2deg); box-shadow:0 8px 24px rgba(0,0,0,.2); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="text-muted small">
+    <i class="bi bi-arrows-move me-1"></i>Arrastra las tarjetas entre columnas para cambiar la prioridad.
+  </div>
+  <a href="/tickets/create/" class="btn btn-sm btn-primary">
+    <i class="bi bi-plus-lg me-1"></i>Nuevo Ticket
+  </a>
+</div>
+
+<div class="kanban-board">
+  {% for priority in priorities %}
+  {% with col=columns|default_if_none:'' %}
+  <div class="kanban-column col-{{ priority|lower|cut:' '|cut:'í' }}" id="col-{{ priority }}">
+    <div class="kanban-column-header">
+      <span>
+        {% if priority == 'Crítica' %}<i class="bi bi-fire me-1"></i>
+        {% elif priority == 'Alta' %}<i class="bi bi-arrow-up-circle me-1"></i>
+        {% elif priority == 'Media' %}<i class="bi bi-dash-circle me-1"></i>
+        {% else %}<i class="bi bi-arrow-down-circle me-1"></i>{% endif %}
+        {{ priority }}
+      </span>
+      <span class="badge bg-white text-dark" id="count-{{ priority }}">{{ columns|dictsort:"priority"|length }}</span>
+    </div>
+    <div class="kanban-cards" id="cards-{{ priority }}" data-priority="{{ priority }}">
+      {% for ticket in columns|default_if_none:'' %}{% endfor %}
+    </div>
+  </div>
+  {% endwith %}
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Datos del servidor
+const KANBAN_DATA = {
+  {% for priority, tickets in columns.items %}
+  "{{ priority }}": [
+    {% for t in tickets %}
+    {
+      id: {{ t.pk }},
+      code: "{{ t.code }}",
+      title: "{{ t.title|escapejs|truncatechars:50 }}",
+      customer: "{{ t.customer|default:''|escapejs }}",
+      agent: "{{ t.agent|default:'Sin asignar'|escapejs }}",
+      status: "{{ t.status }}",
+      category: "{{ t.category }}"
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ]{% if not forloop.last %},{% endif %}
+  {% endfor %}
+};
+
+const STATUS_CLASS = {
+  'Abierto':'bg-info','Asignado':'bg-primary','En proceso':'bg-warning text-dark',
+  'Pendiente':'bg-secondary','Resuelto':'bg-success','Cerrado':'bg-dark'
+};
+
+// Render cards
+function renderCards() {
+  Object.keys(KANBAN_DATA).forEach(priority => {
+    const container = $(`#cards-${priority}`);
+    container.empty();
+    const tickets = KANBAN_DATA[priority] || [];
+    $(`#count-${priority}`).text(tickets.length);
+    tickets.forEach(t => {
+      const sc = STATUS_CLASS[t.status] || 'bg-secondary';
+      container.append(`
+        <div class="kanban-card" data-ticket-id="${t.id}">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <a href="/tickets/${t.id}/" class="fw-semibold text-decoration-none small text-dark">${t.code}</a>
+            <span class="badge ${sc}" style="font-size:.65rem">${t.status}</span>
+          </div>
+          <div class="small text-dark mb-1" style="line-height:1.3">${t.title}</div>
+          <div class="d-flex justify-content-between mt-2">
+            <small class="text-muted"><i class="bi bi-person me-1"></i>${t.customer}</small>
+            <small class="text-muted"><i class="bi bi-tag me-1"></i>${t.category}</small>
+          </div>
+          <div class="mt-1"><small class="text-muted"><i class="bi bi-headset me-1"></i>${t.agent}</small></div>
+        </div>
+      `);
+    });
+  });
+}
+
+renderCards();
+
+// Sortable drag & drop entre columnas
+$(function() {
+  $('.kanban-cards').sortable({
+    connectWith: '.kanban-cards',
+    placeholder: 'ui-sortable-placeholder',
+    helper: 'clone',
+    opacity: 0.8,
+    tolerance: 'pointer',
+    stop: function(event, ui) {
+      const ticketId      = ui.item.data('ticket-id');
+      const newPriority   = ui.item.closest('.kanban-cards').data('priority');
+      const oldContainer  = ui.sender;
+
+      updatePriority(ticketId, newPriority, ui.item, oldContainer);
+    }
+  }).disableSelection();
+});
+
+function updatePriority(ticketId, newPriority, cardEl, oldContainer) {
+  $.ajax({
+    url: '/kanban/update/',
+    method: 'POST',
+    contentType: 'application/json',
+    headers: { 'X-CSRFToken': getCsrf() },
+    data: JSON.stringify({ ticket_id: ticketId, priority: newPriority }),
+    success: function(res) {
+      if (res.ok) {
+        Swal.fire({ icon:'success', title:`Prioridad → ${newPriority}`,
+          timer:1500, showConfirmButton:false, toast:true, position:'top-end' });
+        // Actualizar contadores
+        Object.keys(KANBAN_DATA).forEach(p => {
+          const idx = KANBAN_DATA[p].findIndex(t => t.id === ticketId);
+          if (idx > -1) {
+            const t = KANBAN_DATA[p].splice(idx, 1)[0];
+            t.priority = newPriority;
+            KANBAN_DATA[newPriority].push(t);
+          }
+        });
+        // Actualizar badges de conteo
+        Object.keys(KANBAN_DATA).forEach(p => {
+          $(`#count-${p}`).text(KANBAN_DATA[p].length);
+        });
+      } else {
+        Swal.fire('Error', res.error || 'No se pudo actualizar', 'error');
+        // Revertir visualmente
+        if (oldContainer) { oldContainer.sortable('cancel'); }
+      }
+    },
+    error: function() {
+      Swal.fire('Error', 'Error de conexión', 'error');
+    }
+  });
+}
+</script>
+{% endblock %}

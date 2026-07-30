@@ -1,0 +1,426 @@
+{% extends "plantillaPrincipal.html" %}
+{% block title %}Tickets – Helpdesk TI{% endblock %}
+{% block page_title %}Lista de Tickets{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* ── Vista lista drag&drop ───────────────────────────────── */
+  #priority-list-view { display: none; }
+
+  .priority-group { margin-bottom: 20px; }
+  .priority-group-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 14px; border-radius: 8px 8px 0 0;
+    font-weight: 700; font-size: .85rem; text-transform: uppercase; letter-spacing: .5px;
+  }
+  .pgh-critica  { background: rgba(220,53,69,.15);  color: #dc3545; border-left: 4px solid #dc3545; }
+  .pgh-alta     { background: rgba(253,126,20,.15); color: #fd7e14; border-left: 4px solid #fd7e14; }
+  .pgh-media    { background: rgba(13,110,253,.12); color: #0d6efd; border-left: 4px solid #0d6efd; }
+  .pgh-baja     { background: rgba(108,117,125,.12);color: #6c757d; border-left: 4px solid #6c757d; }
+
+  .ticket-sortable {
+    min-height: 54px;
+    border: 1px solid #e3e8f0; border-top: none;
+    border-radius: 0 0 8px 8px;
+    background: #fff;
+  }
+  .ticket-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; border-bottom: 1px solid #f0f2f5;
+    cursor: grab; transition: background .15s;
+    font-size: .85rem;
+  }
+  .ticket-row:last-child { border-bottom: none; }
+  .ticket-row:hover { background: #f8f9ff; }
+  .ticket-row:active { cursor: grabbing; }
+  .ticket-row .drag-handle {
+    color: #adb5bd; font-size: 1rem; flex-shrink: 0; cursor: grab;
+  }
+  .ticket-row .t-code { font-weight: 700; min-width: 80px; }
+  .ticket-row .t-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ticket-row .t-meta  { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+
+  .ui-sortable-helper {
+    background: #fff !important;
+    box-shadow: 0 6px 20px rgba(1,41,112,.18) !important;
+    border-radius: 8px !important;
+    opacity: .95;
+  }
+  .ui-sortable-placeholder {
+    height: 44px;
+    background: rgba(59,125,221,.06);
+    border: 2px dashed #3b7ddd;
+    border-radius: 4px;
+    margin: 2px 8px;
+    visibility: visible !important;
+  }
+
+  /* ── Toggle botón ─────────────────────────────────────────── */
+  .view-toggle .btn { border-radius: 6px; }
+  .view-toggle .btn.active { box-shadow: inset 0 1px 3px rgba(0,0,0,.15); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Filtros + controles -->
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end" id="filterForm">
+      <div class="col-auto">
+        <input type="text" name="q" class="form-control form-control-sm"
+               placeholder="Buscar..." value="{{ filters.q }}" id="searchInput">
+      </div>
+      <div class="col-auto">
+        <select name="status" class="form-select form-select-sm">
+          <option value="">— Estado —</option>
+          {% for val, label in status_choices %}
+          <option value="{{ val }}" {% if filters.status == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <select name="priority" class="form-select form-select-sm">
+          <option value="">— Prioridad —</option>
+          {% for val, label in priority_choices %}
+          <option value="{{ val }}" {% if filters.priority == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <select name="category" class="form-select form-select-sm">
+          <option value="">— Categoría —</option>
+          {% for val, label in category_choices %}
+          <option value="{{ val }}" {% if filters.category == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-primary">Filtrar</button>
+        <a href="/tickets/" class="btn btn-sm btn-outline-secondary">Limpiar</a>
+      </div>
+      <div class="col-auto ms-auto d-flex gap-2 align-items-center">
+        <!-- Toggle tabla / lista prioridad -->
+        <div class="view-toggle btn-group btn-group-sm" role="group" title="Cambiar vista">
+          <button type="button" id="btn-view-table" class="btn btn-outline-secondary active" title="Vista tabla">
+            <i class="bi bi-table"></i>
+          </button>
+          <button type="button" id="btn-view-priority" class="btn btn-outline-secondary" title="Vista prioridad (drag&drop)">
+            <i class="bi bi-list-task"></i>
+          </button>
+        </div>
+        <a href="/tickets/create/" class="btn btn-sm btn-success">
+          <i class="bi bi-plus-lg me-1"></i>Nuevo Ticket
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══ Vista tabla (DataTables) ═══════════════════════════════════════════ -->
+<div id="table-view">
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table id="ticketsTable" class="table table-hover table-sm align-middle mb-0">
+          <thead class="table-dark">
+            <tr>
+              <th>Código</th>
+              <th>Título</th>
+              <th>Cliente</th>
+              <th>Agente</th>
+              <th>Categoría</th>
+              <th>Prioridad</th>
+              <th>Estado</th>
+              <th>SLA</th>
+              <th>Creado</th>
+              <th>Vence</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ticket in tickets %}
+            <tr {% if ticket.is_overdue %}class="overdue-row"{% endif %}>
+              <td><a href="/tickets/{{ ticket.pk }}/" class="fw-semibold text-decoration-none">{{ ticket.code }}</a></td>
+              <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{{ ticket.title }}">
+                {{ ticket.title|truncatechars:40 }}
+              </td>
+              <td>{{ ticket.customer }}</td>
+              <td>{{ ticket.agent|default:"—" }}</td>
+              <td><span class="badge bg-secondary rounded-pill">{{ ticket.category }}</span></td>
+              <td>
+                <span class="badge
+                  {% if ticket.priority == 'Crítica' %}bg-danger
+                  {% elif ticket.priority == 'Alta' %}bg-warning text-dark
+                  {% elif ticket.priority == 'Media' %}bg-primary
+                  {% else %}bg-secondary{% endif %}">
+                  {{ ticket.priority }}
+                </span>
+              </td>
+              <td>
+                <span class="badge
+                  {% if ticket.status == 'Abierto' %}bg-info
+                  {% elif ticket.status == 'Asignado' %}bg-primary
+                  {% elif ticket.status == 'En proceso' %}bg-warning text-dark
+                  {% elif ticket.status == 'Pendiente' %}bg-secondary
+                  {% elif ticket.status == 'Resuelto' or ticket.status == 'Validado' %}bg-success
+                  {% else %}bg-dark{% endif %}">
+                  {{ ticket.status }}
+                </span>
+              </td>
+              <td>
+                {% if ticket.sla_status == 'Cumplido' %}
+                  <span class="text-success"><i class="bi bi-check-circle-fill"></i></span>
+                {% elif ticket.sla_status == 'Incumplido' %}
+                  <span class="text-danger"><i class="bi bi-x-circle-fill"></i></span>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td class="text-nowrap small">{{ ticket.created_at|date:"d/m/Y H:i" }}</td>
+              <td class="text-nowrap small {% if ticket.is_overdue %}text-danger fw-bold{% endif %}">
+                {{ ticket.due_date|date:"d/m/Y"|default:"—" }}
+              </td>
+              <td class="text-nowrap">
+                <a href="/tickets/{{ ticket.pk }}/" class="btn btn-icon btn-outline-primary btn-sm" title="Ver">
+                  <i class="bi bi-eye"></i>
+                </a>
+                <a href="/tickets/{{ ticket.pk }}/edit/" class="btn btn-icon btn-outline-secondary btn-sm" title="Editar">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                {% if request.user.is_superuser %}
+                <button class="btn btn-icon btn-outline-danger btn-sm" title="Eliminar"
+                  onclick="confirmDelete({{ ticket.pk }}, '{{ ticket.code }}')">
+                  <i class="bi bi-trash"></i>
+                </button>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Vista priorización drag&drop ══════════════════════════════════════ -->
+<div id="priority-list-view">
+  <div class="alert alert-info border-0 py-2 mb-3 small">
+    <i class="bi bi-arrows-move me-1"></i>
+    Arrastra los tickets entre grupos para cambiar su prioridad. El cambio se guarda automáticamente.
+  </div>
+
+  {% for priority in priority_order %}
+  <div class="priority-group">
+    <div class="priority-group-header pgh-{{ priority|lower|cut:'í'|cut:'á'|cut:'é'|cut:'ó'|cut:'ú' }}">
+      <span>
+        {% if priority == 'Crítica' %}<i class="bi bi-fire me-2"></i>
+        {% elif priority == 'Alta' %}<i class="bi bi-arrow-up-circle me-2"></i>
+        {% elif priority == 'Media' %}<i class="bi bi-dash-circle me-2"></i>
+        {% else %}<i class="bi bi-arrow-down-circle me-2"></i>{% endif %}
+        {{ priority }}
+      </span>
+      <span class="badge bg-white text-dark" id="count-{{ priority }}">
+        {{ tickets_by_priority|default_if_none:'' }}
+      </span>
+    </div>
+    <ul class="ticket-sortable list-unstyled mb-0"
+        id="plist-{{ priority }}"
+        data-priority="{{ priority }}">
+      {% for ticket in tickets %}
+      {% if ticket.priority == priority %}
+      <li class="ticket-row" data-ticket-id="{{ ticket.pk }}" data-priority="{{ ticket.priority }}">
+        <i class="bi bi-grip-vertical drag-handle"></i>
+        <span class="t-code">
+          <a href="/tickets/{{ ticket.pk }}/" class="text-decoration-none text-dark">{{ ticket.code }}</a>
+        </span>
+        <span class="t-title" title="{{ ticket.title }}">{{ ticket.title|truncatechars:60 }}</span>
+        <span class="t-meta">
+          <span class="badge
+            {% if ticket.status == 'Abierto' %}bg-info
+            {% elif ticket.status == 'Asignado' %}bg-primary
+            {% elif ticket.status == 'En proceso' %}bg-warning text-dark
+            {% elif ticket.status == 'Pendiente' %}bg-secondary
+            {% elif ticket.status == 'Resuelto' or ticket.status == 'Validado' %}bg-success
+            {% else %}bg-dark{% endif %}" style="font-size:.7rem;">
+            {{ ticket.status }}
+          </span>
+          <small class="text-muted d-none d-md-inline">{{ ticket.customer }}</small>
+          {% if ticket.is_overdue %}
+          <span class="badge bg-danger" style="font-size:.7rem;">VENCIDO</span>
+          {% endif %}
+        </span>
+      </li>
+      {% endif %}
+      {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── DataTable ────────────────────────────────────────────────────────────────
+$(function () {
+  if ($.fn.DataTable.isDataTable('#ticketsTable')) return;
+  $('#ticketsTable').DataTable({
+    language: {
+      url: 'https://cdn.datatables.net/plug-ins/1.13.8/i18n/es-MX.json',
+      emptyTable: 'No hay tickets que mostrar.'
+    },
+    pageLength: 20,
+    order: [[8, 'desc']],
+    dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+         "<'row'<'col-sm-12'B>>" +
+         "<'row'<'col-sm-12'tr>>" +
+         "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+    buttons: [
+      { extend: 'excelHtml5', text: '<i class="bi bi-file-earmark-excel me-1"></i>Excel',
+        className: 'btn btn-sm btn-success me-1', title: 'Tickets – Helpdesk TI',
+        exportOptions: { columns: ':visible:not(:last-child)' } },
+      { extend: 'pdfHtml5', text: '<i class="bi bi-file-earmark-pdf me-1"></i>PDF',
+        className: 'btn btn-sm btn-danger me-1', title: 'Tickets – Helpdesk TI',
+        orientation: 'landscape', pageSize: 'A4',
+        exportOptions: { columns: ':visible:not(:last-child)' } },
+      { extend: 'print', text: '<i class="bi bi-printer me-1"></i>Imprimir',
+        className: 'btn btn-sm btn-secondary',
+        exportOptions: { columns: ':visible:not(:last-child)' } }
+    ],
+    columnDefs: [{ orderable: false, targets: -1 }]
+  });
+});
+
+// ── Drag & drop prioridad ────────────────────────────────────────────────────
+$(function () {
+  // Contar tickets por grupo al cargar
+  $('.ticket-sortable').each(function () {
+    const p     = $(this).data('priority');
+    const count = $(this).find('.ticket-row').length;
+    $('#count-' + p).text(count);
+  });
+
+  // Inicializar sortable conectado entre todos los grupos
+  $('.ticket-sortable').sortable({
+    connectWith: '.ticket-sortable',
+    handle: '.drag-handle, .ticket-row',
+    placeholder: 'ui-sortable-placeholder',
+    opacity: 0.85,
+    tolerance: 'pointer',
+    revert: 150,
+    stop: function (event, ui) {
+      const ticketId    = ui.item.data('ticket-id');
+      const newPriority = ui.item.closest('.ticket-sortable').data('priority');
+      const oldPriority = ui.item.data('priority');
+
+      if (newPriority === oldPriority) return; // sin cambio
+
+      updatePriority(ticketId, newPriority, ui.item, oldPriority);
+    }
+  }).disableSelection();
+});
+
+function updatePriority(ticketId, newPriority, itemEl, oldPriority) {
+  // Deshabilitar drag mientras se guarda
+  $('.ticket-sortable').sortable('disable');
+
+  $.ajax({
+    url: '/tickets/update-priority/',
+    method: 'POST',
+    contentType: 'application/json',
+    headers: { 'X-CSRFToken': getCsrf() },
+    data: JSON.stringify({ ticket_id: ticketId, priority: newPriority }),
+    success: function (res) {
+      if (res.ok) {
+        // Actualizar atributo del elemento
+        itemEl.data('priority', newPriority);
+        // Actualizar contadores
+        updateCounts();
+        Swal.fire({
+          icon: 'success',
+          title: 'Prioridad actualizada',
+          text: newPriority,
+          timer: 1400,
+          showConfirmButton: false,
+          toast: true,
+          position: 'top-end'
+        });
+      } else {
+        Swal.fire('Error', res.error || 'No se pudo actualizar la prioridad', 'error');
+        revertItem(itemEl, oldPriority);
+      }
+    },
+    error: function () {
+      Swal.fire('Error', 'Error de conexión al guardar la prioridad', 'error');
+      revertItem(itemEl, oldPriority);
+    },
+    complete: function () {
+      $('.ticket-sortable').sortable('enable');
+    }
+  });
+}
+
+function revertItem(itemEl, oldPriority) {
+  const orig = $('#plist-' + oldPriority);
+  orig.prepend(itemEl);
+  itemEl.data('priority', oldPriority);
+  updateCounts();
+}
+
+function updateCounts() {
+  $('.ticket-sortable').each(function () {
+    const p = $(this).data('priority');
+    $('#count-' + p).text($(this).find('.ticket-row').length);
+  });
+}
+
+// ── Toggle vistas ─────────────────────────────────────────────────────────────
+$('#btn-view-table').on('click', function () {
+  $('#table-view').show();
+  $('#priority-list-view').hide();
+  $(this).addClass('active');
+  $('#btn-view-priority').removeClass('active');
+  localStorage.setItem('hd_ticket_view', 'table');
+});
+
+$('#btn-view-priority').on('click', function () {
+  $('#table-view').hide();
+  $('#priority-list-view').show();
+  $(this).addClass('active');
+  $('#btn-view-table').removeClass('active');
+  localStorage.setItem('hd_ticket_view', 'priority');
+});
+
+// Restaurar última vista usada
+$(function () {
+  if (localStorage.getItem('hd_ticket_view') === 'priority') {
+    $('#btn-view-priority').trigger('click');
+  }
+});
+
+// ── Eliminar ticket ──────────────────────────────────────────────────────────
+function confirmDelete(pk, code) {
+  Swal.fire({
+    title: '¿Eliminar ' + code + '?',
+    text: 'Se realizará una eliminación lógica.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#dc3545',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'Sí, eliminar',
+    cancelButtonText: 'Cancelar'
+  }).then(function (result) {
+    if (result.isConfirmed) {
+      var form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '/tickets/' + pk + '/delete/';
+      form.innerHTML = '<input type="hidden" name="csrfmiddlewaretoken" value="' + getCsrf() + '">';
+      document.body.appendChild(form);
+      form.submit();
+    }
+  });
+}
+</script>
+{% endblock %}

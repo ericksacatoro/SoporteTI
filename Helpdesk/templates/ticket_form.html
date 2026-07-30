@@ -1,0 +1,253 @@
+{% extends "plantillaPrincipal.html" %}
+{% block title %}{{ title }} – Helpdesk TI{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white border-0 py-3">
+        <h5 class="mb-0 fw-bold">
+          <i class="bi bi-ticket-detailed me-2 text-primary"></i>{{ title }}
+        </h5>
+      </div>
+      <div class="card-body">
+        <form method="post" enctype="multipart/form-data" id="ticketForm" novalidate>
+          {% csrf_token %}
+
+          <!-- Título -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold" for="f-title">
+              Título <span class="text-danger">*</span>
+            </label>
+            <input type="text" name="title" id="f-title" class="form-control"
+              value="{{ ticket.title|default:'' }}"
+              placeholder="Resumen breve del problema"
+              maxlength="200" minlength="5" required>
+            <div class="invalid-feedback"></div>
+          </div>
+
+          <!-- Descripción -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold" for="f-description">
+              Descripción <span class="text-danger">*</span>
+            </label>
+            <textarea name="description" id="f-description" class="form-control" rows="5"
+              placeholder="Describe el problema: cuándo ocurrió, qué intentaste, impacto…"
+              minlength="10" required>{{ ticket.description|default:'' }}</textarea>
+            <div class="invalid-feedback"></div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <!-- Categoría -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="f-category">
+                Categoría <span class="text-danger">*</span>
+              </label>
+              <select name="category" id="f-category" class="form-select" required>
+                {% for val, label in category_choices %}
+                <option value="{{ val }}"
+                  {% if ticket and ticket.category == val %}selected{% endif %}>
+                  {{ label }}
+                </option>
+                {% endfor %}
+              </select>
+              <div class="invalid-feedback"></div>
+            </div>
+
+            <!-- Prioridad: oculta para clientes -->
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="f-priority">Prioridad</label>
+              {% if request.user.is_superuser %}
+              <select name="priority" id="f-priority" class="form-select">
+                {% for val, label in priority_choices %}
+                <option value="{{ val }}"
+                  {% if ticket and ticket.priority == val %}selected
+                  {% elif not ticket and val == 'Media' %}selected{% endif %}>
+                  {{ label }}
+                </option>
+                {% endfor %}
+              </select>
+              {% else %}
+              <input type="hidden" name="priority" value="Media">
+              <div class="form-control-plaintext text-muted small">
+                <i class="bi bi-info-circle me-1"></i>
+                La prioridad es asignada por el administrador.
+              </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Cliente: solo visible para Admin -->
+          {% if customers %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold" for="f-customer">
+              Cliente <span class="text-danger">*</span>
+            </label>
+            <select name="customer" id="f-customer" class="form-select select2" required>
+              <option value="">— Seleccionar cliente —</option>
+              {% for c in customers %}
+              <option value="{{ c.pk }}"
+                {% if ticket and ticket.customer.pk == c.pk %}selected{% endif %}>
+                {{ c.full_name }} ({{ c.user.username }})
+              </option>
+              {% endfor %}
+            </select>
+            <div class="invalid-feedback"></div>
+          </div>
+          {% endif %}
+
+          <div class="row g-3 mb-3">
+            <!-- SLA: solo Admin -->
+            {% if request.user.is_superuser %}
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" for="f-sla">SLA</label>
+              <select name="sla" id="f-sla" class="form-select select2">
+                <option value="">— Auto —</option>
+                {% for s in slas %}
+                <option value="{{ s.pk }}"
+                  {% if ticket and ticket.sla and ticket.sla.pk == s.pk %}selected{% endif %}>
+                  {{ s.name }} ({{ s.resolution_time_hours }}h resolución)
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            {% endif %}
+
+            <!-- Equipo -->
+            <div class="{% if request.user.is_superuser %}col-md-6{% else %}col-md-12{% endif %}">
+              <label class="form-label fw-semibold" for="f-equipment">Equipo TI afectado</label>
+              <select name="equipment" id="f-equipment" class="form-select select2">
+                <option value="">— Ninguno —</option>
+                {% for e in equipments %}
+                <option value="{{ e.pk }}"
+                  {% if ticket and ticket.equipment and ticket.equipment.pk == e.pk %}selected{% endif %}>
+                  {{ e.name }} ({{ e.serial_number }})
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <!-- Adjunto -->
+          <div class="mb-4">
+            <label class="form-label fw-semibold" for="f-attachment">
+              Adjunto / Evidencia
+            </label>
+            <input type="file" name="attachment" id="f-attachment" class="form-control"
+              accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx,.zip">
+            <div class="form-text">Máx. 10 MB. Formatos: imágenes, PDF, Word, Excel, ZIP.</div>
+            {% if ticket and ticket.attachment %}
+            <div class="mt-1">
+              <i class="bi bi-paperclip text-muted me-1"></i>
+              <a href="{{ ticket.attachment.url }}" target="_blank" class="small">
+                {{ ticket.attachment.name|slice:"8:" }}
+              </a>
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- Botones -->
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary px-4">
+              <i class="bi bi-save me-1"></i>
+              {% if ticket %}Actualizar Ticket{% else %}Crear Ticket{% endif %}
+            </button>
+            <a href="{% if ticket %}/tickets/{{ ticket.pk }}/{% else %}/tickets/{% endif %}"
+               class="btn btn-outline-secondary">
+              Cancelar
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(function () {
+  // Select2
+  $('#f-customer, #f-sla, #f-equipment').select2({
+    theme: 'bootstrap-5', language: 'es', width: '100%'
+  });
+
+  // Método: solo letras y espacios
+  $.validator.addMethod('soloLetras', function (value) {
+    return !value || /^[A-Za-záéíóúÁÉÍÓÚñÑüÜ\s\-]+$/.test(value);
+  }, 'Solo se permiten letras y espacios.');
+
+  // Método: extensión de archivo permitida
+  $.validator.addMethod('extPermitida', function (value, element) {
+    if (!element.files || !element.files[0]) return true;
+    var ext = element.files[0].name.split('.').pop().toLowerCase();
+    return ['jpg','jpeg','png','gif','pdf','doc','docx','xls','xlsx','zip'].indexOf(ext) > -1;
+  }, 'Formato de archivo no permitido.');
+
+  // Método: tamaño máximo de archivo
+  $.validator.addMethod('maxFileSize', function (value, element, maxMB) {
+    if (!element.files || !element.files[0]) return true;
+    return element.files[0].size <= maxMB * 1024 * 1024;
+  }, 'El archivo supera el tamaño máximo.');
+
+  var rules = {
+    title: {
+      required: true,
+      minlength: 5,
+      maxlength: 200
+    },
+    description: {
+      required: true,
+      minlength: 10,
+      maxlength: 5000
+    },
+    category: { required: true },
+    attachment: {
+      extPermitida: true,
+      maxFileSize:  10
+    }
+  };
+
+  var msgs = {
+    title: {
+      required:  'El título es obligatorio.',
+      minlength: 'El título debe tener al menos 5 caracteres.',
+      maxlength: 'El título no puede superar los 200 caracteres.'
+    },
+    description: {
+      required:  'La descripción es obligatoria.',
+      minlength: 'La descripción debe tener al menos 10 caracteres.'
+    },
+    category:    { required: 'Selecciona una categoría.' },
+    attachment: {
+      extPermitida: 'Solo se permiten: imágenes, PDF, Word, Excel, ZIP.',
+      maxFileSize:  'El archivo no puede superar los 10 MB.'
+    }
+  };
+
+  {% if customers %}
+  rules.customer    = { required: true };
+  msgs.customer     = { required: 'Debes seleccionar un cliente.' };
+  {% endif %}
+
+  $('#ticketForm').validate({
+    rules: rules,
+    messages: msgs,
+    errorClass: 'is-invalid',
+    validClass: 'is-valid',
+    errorPlacement: function (error, element) {
+      error.addClass('invalid-feedback');
+      if (element.hasClass('select2-hidden-accessible')) {
+        element.closest('.mb-3, .col-md-6, .col-md-12').find('.select2-container').after(error);
+      } else {
+        element.after(error);
+      }
+    },
+    highlight:   function (el) { $(el).addClass('is-invalid').removeClass('is-valid'); },
+    unhighlight: function (el) { $(el).removeClass('is-invalid').addClass('is-valid'); },
+    submitHandler: function (form) { form.submit(); }
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,95 @@
+{% extends "plantillaPrincipal.html" %}
+{% block title %}SLA – Helpdesk TI{% endblock %}
+{% block page_title %}Gestión de SLA{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <p class="text-muted mb-0">Acuerdos de Nivel de Servicio configurados.</p>
+  <a href="/gestion/slas/crear/" class="btn btn-primary btn-sm">
+    <i class="bi bi-shield-plus me-1"></i>Nuevo SLA
+  </a>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table id="slasTable" class="table table-hover table-sm align-middle mb-0">
+        <thead class="table-dark">
+          <tr>
+            <th>#</th><th>Nombre</th><th>T. Respuesta (h)</th><th>T. Resolución (h)</th>
+            <th>Descripción</th><th>Estado</th><th>Creado</th><th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sla in slas %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td class="fw-semibold">{{ sla.name }}</td>
+            <td><span class="badge bg-info text-dark">{{ sla.response_time_hours }}h</span></td>
+            <td><span class="badge bg-primary">{{ sla.resolution_time_hours }}h</span></td>
+            <td class="small text-muted">{{ sla.description|default:"—"|truncatechars:60 }}</td>
+            <td>
+              {% if sla.is_active %}
+              <span class="badge bg-success">Activo</span>
+              {% else %}
+              <span class="badge bg-secondary">Inactivo</span>
+              {% endif %}
+            </td>
+            <td class="small text-nowrap">{{ sla.created_at|date:"d/m/Y" }}</td>
+            <td class="text-nowrap">
+              <a href="/gestion/slas/{{ sla.pk }}/editar/" class="btn btn-icon btn-outline-secondary btn-sm" title="Editar">
+                <i class="bi bi-pencil"></i>
+              </a>
+              <button class="btn btn-icon btn-outline-danger btn-sm" title="Eliminar"
+                onclick="confirmDeleteSLA({{ sla.pk }}, '{{ sla.name|escapejs }}')">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(function() {
+  $('#slasTable').DataTable({
+    language:{ url:'https://cdn.datatables.net/plug-ins/1.13.8/i18n/es-MX.json', emptyTable:'No hay SLAs configurados.' },
+    pageLength:15, order:[[0,'asc']],
+    dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+         "<'row'<'col-sm-12'B>>" +
+         "<'row'<'col-sm-12'tr>>" +
+         "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+    buttons:[
+      {extend:'excelHtml5',text:'<i class="bi bi-file-earmark-excel me-1"></i>Excel',
+       className:'btn btn-sm btn-success me-1',title:'SLA – Helpdesk TI',
+       exportOptions: { columns: ':visible:not(:last-child)' }},
+      {extend:'pdfHtml5',text:'<i class="bi bi-file-earmark-pdf me-1"></i>PDF',
+       className:'btn btn-sm btn-danger',title:'SLA – Helpdesk TI',
+       exportOptions: { columns: ':visible:not(:last-child)' }},
+    ],
+    columnDefs:[{orderable:false,targets:-1}]
+  });
+});
+function confirmDeleteSLA(pk, name) {
+  Swal.fire({
+    title:`¿Eliminar SLA "${name}"?`,
+    text:'Si el SLA está en uso por tickets, no podrá eliminarse.',
+    icon:'warning',showCancelButton:true,
+    confirmButtonColor:'#dc3545',cancelButtonColor:'#6c757d',
+    confirmButtonText:'Eliminar',cancelButtonText:'Cancelar'
+  }).then(r => {
+    if (r.isConfirmed) {
+      const form = document.createElement('form');
+      form.method='POST'; form.action=`/gestion/slas/${pk}/eliminar/`;
+      form.innerHTML=`<input type="hidden" name="csrfmiddlewaretoken" value="${getCsrf()}">`;
+      document.body.appendChild(form); form.submit();
+    }
+  });
+}
+</script>
+{% endblock %}

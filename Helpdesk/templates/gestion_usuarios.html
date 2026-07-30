@@ -1,0 +1,36 @@
+{% extends 'plantillaPrincipal.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between mb-3">
+    <h2>Usuarios</h2>
+    <a href="/gestion/usuarios/crear/" class="btn btn-primary">Nuevo usuario</a>
+  </div>
+  <table id="usersTable" class="table table-striped">
+    <thead><tr><th>Nombre</th><th>Empresa</th><th>Email</th><th>Estado</th><th>Acciones</th></tr></thead>
+    <tbody>
+      {% for c in customers %}
+        <tr>
+          <td>{{ c.full_name }}</td>
+          <td>{{ c.company }}</td>
+          <td>{{ c.user.email }}</td>
+          <td>{% if c.is_active %}Activo{% else %}Inactivo{% endif %}</td>
+          <td>
+            <a href="/gestion/usuarios/{{ c.id }}/editar/" class="btn btn-sm btn-primary">Editar</a>
+            <a href="/gestion/usuarios/{{ c.id }}/eliminar/" class="btn btn-sm btn-danger">Desactivar</a>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  $(document).ready(function() {
+    $('#usersTable').DataTable({ language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json' } });
+  });
+</script>
+{% endblock %}  

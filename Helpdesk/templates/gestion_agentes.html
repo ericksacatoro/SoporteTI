@@ -1,0 +1,37 @@
+{% extends 'plantillaPrincipal.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between mb-3">
+    <h2>Agentes de soporte</h2>
+    <a href="/gestion/agentes/crear/" class="btn btn-primary">Nuevo agente</a>
+  </div>
+  <table id="agentsTable" class="table table-striped">
+    <thead><tr><th>Usuario</th><th>Rol</th><th>Especialidad</th><th>Extensión</th><th>Disponible</th><th>Acciones</th></tr></thead>
+    <tbody>
+      {% for a in agents %}
+        <tr>
+          <td>{{ a.user.username }}</td>
+          <td>{{ a.role }}</td>
+          <td>{{ a.speciality }}</td>
+          <td>{{ a.extension }}</td>
+          <td>{% if a.is_available %}Sí{% else %}No{% endif %}</td>
+          <td>
+            <a href="/gestion/agentes/{{ a.id }}/editar/" class="btn btn-sm btn-primary">Editar</a>
+            <a href="/gestion/agentes/{{ a.id }}/eliminar/" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar este agente?')">Eliminar</a>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  $(document).ready(function() {
+    $('#agentsTable').DataTable({ language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json' } });
+  });
+</script>
+{% endblock %}

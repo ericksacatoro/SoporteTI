@@ -1,0 +1,36 @@
+{% extends 'plantillaPrincipal.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between mb-3">
+    <h2>Acuerdos de Nivel de Servicio (SLA)</h2>
+    <a href="/gestion/slas/crear/" class="btn btn-primary">Nuevo SLA</a>
+  </div>
+  <table id="slasTable" class="table table-striped">
+    <thead><tr><th>Nombre</th><th>Respuesta (h)</th><th>Resolución (h)</th><th>Activo</th><th>Acciones</th></tr></thead>
+    <tbody>
+      {% for sla in slas %}
+        <tr>
+          <td>{{ sla.name }}</td>
+          <td>{{ sla.response_time_hours }}</td>
+          <td>{{ sla.resolution_time_hours }}</td>
+          <td>{% if sla.is_active %}Sí{% else %}No{% endif %}</td>
+          <td>
+            <a href="/gestion/slas/{{ sla.id }}/editar/" class="btn btn-sm btn-primary">Editar</a>
+            <a href="/gestion/slas/{{ sla.id }}/eliminar/" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar este SLA?')">Eliminar</a>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  $(document).ready(function() {
+    $('#slasTable').DataTable({ language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json' } });
+  });
+</script>
+{% endblock %}

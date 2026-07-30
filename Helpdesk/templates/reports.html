@@ -1,0 +1,172 @@
+{% extends "plantillaPrincipal.html" %}
+{% block title %}Reportes – Helpdesk TI{% endblock %}
+{% block page_title %}Reporte de Categorías de Falla{% endblock %}
+
+{% block extra_css %}
+<style>
+  .stat-card { border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(1,41,112,.08); }
+  .stat-number { font-size: 1.9rem; font-weight: 800; line-height: 1; }
+  .chart-box { position: relative; height: 360px; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Filtros de fecha -->
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body py-2">
+    <form method="get" class="row g-2 align-items-end" id="reportFilterForm">
+      <div class="col-auto">
+        <label class="form-label small mb-1">Desde</label>
+        <input type="date" name="date_from" id="date_from" class="form-control form-control-sm" value="{{ date_from }}">
+      </div>
+      <div class="col-auto">
+        <label class="form-label small mb-1">Hasta</label>
+        <input type="date" name="date_to" id="date_to" class="form-control form-control-sm" value="{{ date_to }}">
+      </div>
+      <div class="col-auto">
+        <label class="form-label small mb-1">&nbsp;</label>
+        <div>
+          <button type="submit" class="btn btn-sm btn-primary">Aplicar</button>
+          <a href="/reports/" class="btn btn-sm btn-outline-secondary">Limpiar</a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- KPI: total y resueltos -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card stat-card bg-white text-center">
+      <div class="card-body">
+        <div class="text-muted small mb-1">Total Tickets</div>
+        <div class="stat-number text-primary">{{ total }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card bg-white text-center">
+      <div class="card-body">
+        <div class="text-muted small mb-1">Resueltos</div>
+        <div class="stat-number text-success">{{ resolved }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card bg-white text-center">
+      <div class="card-body">
+        <div class="text-muted small mb-1">Vencidos</div>
+        <div class="stat-number text-danger">{{ overdue }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card bg-white text-center">
+      <div class="card-body">
+        <div class="text-muted small mb-1">Categorías distintas</div>
+        <div class="stat-number text-info">{{ categories|length }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Gráfico de categorías -->
+<div class="row g-3 mb-4">
+  <div class="col-lg-7">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white border-0 fw-semibold">
+        <i class="bi bi-bar-chart-fill text-primary me-2"></i>Categorías de Falla más Frecuentes
+      </div>
+      <div class="card-body">
+        <div class="chart-box"><canvas id="chart-categories"></canvas></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white border-0 fw-semibold">
+        <i class="bi bi-pie-chart-fill text-info me-2"></i>Distribución por categoría
+      </div>
+      <div class="card-body">
+        <div class="chart-box"><canvas id="chart-categories-pie"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CATEGORIES = {{ categories|safe }};
+const TOTAL      = {{ total }};
+
+const COLORS = ['#3b7ddd','#dc3545','#ffc107','#198754','#6f42c1','#fd7e14','#0dcaf0','#6c757d','#d63384','#20c997'];
+const BASE   = { responsive: true, maintainAspectRatio: false };
+
+// Barra horizontal — top categorías
+new Chart(document.getElementById('chart-categories'), {
+  type: 'bar',
+  data: {
+    labels: CATEGORIES.map(c => c.category),
+    datasets: [{
+      label: 'Tickets',
+      data: CATEGORIES.map(c => c.total),
+      backgroundColor: COLORS,
+      borderRadius: 6
+    }]
+  },
+  options: {
+    ...BASE,
+    indexAxis: 'y',
+    plugins: { legend: { display: false } },
+    scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+  }
+});
+
+// Doughnut — distribución
+new Chart(document.getElementById('chart-categories-pie'), {
+  type: 'doughnut',
+  data: {
+    labels: CATEGORIES.map(c => c.category),
+    datasets: [{
+      data: CATEGORIES.map(c => c.total),
+      backgroundColor: COLORS,
+      borderWidth: 2,
+      borderColor: '#fff'
+    }]
+  },
+  options: {
+    ...BASE,
+    cutout: '55%',
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
+  }
+});
+
+$(function () {
+  // Validar rango de fechas
+  $('#reportFilterForm').validate({
+    rules: {
+      date_from: { date: true },
+      date_to:   { date: true }
+    },
+    messages: {
+      date_from: { date: 'Fecha inválida' },
+      date_to:   { date: 'Fecha inválida' }
+    },
+    submitHandler: function (form) {
+      const from = $('#date_from').val();
+      const to   = $('#date_to').val();
+      if (from && to && from > to) {
+        Swal.fire({ icon: 'warning', title: 'Rango inválido', text: '"Desde" debe ser anterior a "Hasta".' });
+        return false;
+      }
+      form.submit();
+    }
+  });
+});
+</script>
+{% endblock %}

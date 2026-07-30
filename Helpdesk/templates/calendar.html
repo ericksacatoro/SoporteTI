@@ -1,0 +1,239 @@
+{% extends "plantillaPrincipal.html" %}
+{% block title %}Calendario – Helpdesk TI{% endblock %}
+{% block page_title %}Calendario de Mantenimientos{% endblock %}
+
+{% block extra_css %}
+<style>
+  #calendar { background:#fff; border-radius:12px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,.07); }
+  .fc-toolbar-title { font-size:1.1rem !important; font-weight:700; }
+  .fc-event { border-radius:6px !important; font-size:.78rem !important; padding:2px 6px !important; cursor:pointer; }
+  .fc-daygrid-event { border:none !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="d-flex gap-2">
+    <span class="badge" style="background:#0d6efd;padding:6px 12px;"><i class="bi bi-tools me-1"></i>Mantenimiento</span>
+    <span class="badge" style="background:#dc3545;padding:6px 12px;"><i class="bi bi-exclamation-triangle me-1"></i>Interrupción</span>
+    <span class="badge" style="background:#198754;padding:6px 12px;"><i class="bi bi-arrow-up-circle me-1"></i>Actualización</span>
+    <span class="badge" style="background:#6c757d;padding:6px 12px;"><i class="bi bi-circle me-1"></i>Otro</span>
+  </div>
+  {% if request.user.is_superuser or request.user.support_agent %}
+  <button class="btn btn-sm btn-primary" id="btn-new-event" onclick="openEventModal()">
+    <i class="bi bi-plus-lg me-1"></i>Nuevo Evento
+  </button>
+  {% endif %}
+</div>
+
+<div id="calendar"></div>
+
+<!-- Modal Crear/Editar evento -->
+<div class="modal fade" id="eventModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="eventModalTitle">
+          <i class="bi bi-calendar-plus me-2 text-primary"></i>Nuevo Evento
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="ev-id">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Título <span class="text-danger">*</span></label>
+          <input type="text" id="ev-title" class="form-control" placeholder="Ej: Mantenimiento servidor BD">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Tipo</label>
+          <select id="ev-type" class="form-select">
+            <option value="Mantenimiento">Mantenimiento</option>
+            <option value="Interrupción">Interrupción</option>
+            <option value="Actualización">Actualización</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <label class="form-label fw-semibold">Inicio <span class="text-danger">*</span></label>
+            <input type="datetime-local" id="ev-start" class="form-control">
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-semibold">Fin <span class="text-danger">*</span></label>
+            <input type="datetime-local" id="ev-end" class="form-control">
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Descripción</label>
+          <textarea id="ev-desc" class="form-control" rows="3" placeholder="Detalles del evento…"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger me-auto" id="btn-delete-event" style="display:none" onclick="deleteEvent()">
+          <i class="bi bi-trash me-1"></i>Eliminar
+        </button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" onclick="saveEvent()">
+          <i class="bi bi-save me-1"></i>Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let calendar;
+const EVENT_COLORS = {
+  'Mantenimiento':'#0d6efd','Interrupción':'#dc3545','Actualización':'#198754','Otro':'#6c757d'
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+  const calEl = document.getElementById('calendar');
+  calendar = new FullCalendar.Calendar(calEl, {
+    locale: 'es',
+    initialView: 'dayGridMonth',
+    headerToolbar: {
+      left:   'prev,next today',
+      center: 'title',
+      right:  'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+    },
+    buttonText: { today:'Hoy', month:'Mes', week:'Semana', day:'Día', list:'Lista' },
+    height: 'auto',
+    editable: true,
+    droppable: true,
+    selectable: true,
+    nowIndicator: true,
+    // Cargar eventos desde API
+    events: function(info, success, failure) {
+      $.get('/calendar/events/', function(data) { success(data); }).fail(failure);
+    },
+    // Click en evento → abrir edición
+    eventClick: function(info) {
+      openEventModal(info.event);
+    },
+    // Seleccionar rango → abrir creación con fechas prellenadas
+    select: function(info) {
+      openEventModal(null, info.startStr, info.endStr);
+    },
+    // Drag & drop para mover
+    eventDrop: function(info) {
+      const ev = info.event;
+      $.ajax({
+        url: `/calendar/events/${ev.id}/move/`,
+        method: 'POST',
+        contentType: 'application/json',
+        headers: { 'X-CSRFToken': getCsrf() },
+        data: JSON.stringify({ start: ev.startStr, end: ev.endStr }),
+        success: function(r) {
+          if (!r.ok) {
+            Swal.fire('Error','No se pudo mover el evento','error');
+            info.revert();
+          } else {
+            Swal.fire({ icon:'success', title:'Evento reprogramado', timer:1500, showConfirmButton:false, toast:true, position:'top-end' });
+          }
+        },
+        error: function() { info.revert(); }
+      });
+    },
+    // Resize
+    eventResize: function(info) {
+      const ev = info.event;
+      $.ajax({
+        url: `/calendar/events/${ev.id}/move/`,
+        method: 'POST',
+        contentType: 'application/json',
+        headers: { 'X-CSRFToken': getCsrf() },
+        data: JSON.stringify({ start: ev.startStr, end: ev.endStr }),
+        success: function(r) { if (!r.ok) info.revert(); }
+      });
+    }
+  });
+  calendar.render();
+});
+
+function openEventModal(event, preStart, preEnd) {
+  document.getElementById('eventModalTitle').innerHTML =
+    event ? '<i class="bi bi-calendar-check me-2 text-warning"></i>Editar Evento'
+          : '<i class="bi bi-calendar-plus me-2 text-primary"></i>Nuevo Evento';
+  document.getElementById('ev-id').value       = event ? event.id : '';
+  document.getElementById('ev-title').value    = event ? event.title : '';
+  document.getElementById('ev-type').value     = event ? (event.extendedProps.event_type || 'Mantenimiento') : 'Mantenimiento';
+  document.getElementById('ev-desc').value     = event ? (event.extendedProps.description || '') : '';
+  document.getElementById('ev-start').value    = event
+    ? dayjs(event.start).format('YYYY-MM-DDTHH:mm')
+    : (preStart ? preStart.substring(0,16) : '');
+  document.getElementById('ev-end').value      = event
+    ? dayjs(event.end || event.start).format('YYYY-MM-DDTHH:mm')
+    : (preEnd ? preEnd.substring(0,16) : '');
+  document.getElementById('btn-delete-event').style.display = event ? 'inline-flex' : 'none';
+  new bootstrap.Modal(document.getElementById('eventModal')).show();
+}
+
+function saveEvent() {
+  const id    = document.getElementById('ev-id').value;
+  const title = document.getElementById('ev-title').value.trim();
+  const start = document.getElementById('ev-start').value;
+  const end   = document.getElementById('ev-end').value;
+
+  if (!title || !start || !end) {
+    Swal.fire({ icon:'warning', title:'Campos obligatorios', text:'Título, inicio y fin son requeridos.', timer:2500, showConfirmButton:false });
+    return;
+  }
+  if (dayjs(end).isBefore(dayjs(start))) {
+    Swal.fire({ icon:'warning', title:'Fechas inválidas', text:'La fecha fin debe ser posterior al inicio.' });
+    return;
+  }
+
+  const payload = {
+    title, start_time: start, end_time: end,
+    event_type:  document.getElementById('ev-type').value,
+    description: document.getElementById('ev-desc').value,
+  };
+
+  const url    = id ? `/calendar/events/${id}/update/` : '/calendar/events/';
+  const method = 'POST';
+
+  $.ajax({
+    url, method, contentType:'application/json',
+    headers: { 'X-CSRFToken': getCsrf() },
+    data: JSON.stringify(payload),
+    success: function(r) {
+      if (r.ok || r.id) {
+        bootstrap.Modal.getInstance(document.getElementById('eventModal')).hide();
+        Swal.fire({ icon:'success', title: id ? 'Evento actualizado' : 'Evento creado',
+          timer:1800, showConfirmButton:false, toast:true, position:'top-end' });
+        calendar.refetchEvents();
+      } else {
+        Swal.fire('Error', r.error || 'No se pudo guardar', 'error');
+      }
+    },
+    error: function() { Swal.fire('Error','Error de conexión','error'); }
+  });
+}
+
+function deleteEvent() {
+  const id = document.getElementById('ev-id').value;
+  if (!id) return;
+  Swal.fire({
+    title:'¿Eliminar evento?', icon:'warning',
+    showCancelButton:true, confirmButtonColor:'#dc3545',
+    confirmButtonText:'Eliminar', cancelButtonText:'Cancelar'
+  }).then(r => {
+    if (!r.isConfirmed) return;
+    $.ajax({
+      url: `/calendar/events/${id}/delete/`,
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCsrf() },
+      success: function() {
+        bootstrap.Modal.getInstance(document.getElementById('eventModal')).hide();
+        Swal.fire({ icon:'success', title:'Evento eliminado', timer:1500, showConfirmButton:false, toast:true, position:'top-end' });
+        calendar.refetchEvents();
+      },
+      error: function() { Swal.fire('Error','No se pudo eliminar','error'); }
+    });
+  });
+}
+</script>
+{% endblock %}

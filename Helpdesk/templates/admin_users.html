@@ -1,0 +1,105 @@
+{% extends "plantillaPrincipal.html" %}
+{% block title %}Usuarios – Helpdesk TI{% endblock %}
+{% block page_title %}Gestión de Usuarios{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <p class="text-muted mb-0">Gestiona los clientes/usuarios del sistema.</p>
+  <a href="/gestion/usuarios/crear/" class="btn btn-primary btn-sm">
+    <i class="bi bi-person-plus me-1"></i>Nuevo Usuario
+  </a>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table id="usersTable" class="table table-hover table-sm align-middle mb-0">
+        <thead class="table-dark">
+          <tr>
+            <th>#</th><th>Nombre</th><th>Usuario</th><th>Email</th>
+            <th>Empresa</th><th>Depto.</th><th>Cargo</th><th>Teléfono</th>
+            <th>Estado</th><th>Creado</th><th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in customers %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td class="fw-semibold">{{ c.full_name }}</td>
+            <td><code>{{ c.user.username }}</code></td>
+            <td>{{ c.user.email }}</td>
+            <td>{{ c.company|default:"—" }}</td>
+            <td>{{ c.department|default:"—" }}</td>
+            <td>{{ c.position|default:"—" }}</td>
+            <td>{{ c.phone|default:"—" }}</td>
+            <td>
+              {% if c.is_active %}
+              <span class="badge bg-success">Activo</span>
+              {% else %}
+              <span class="badge bg-secondary">Inactivo</span>
+              {% endif %}
+            </td>
+            <td class="small text-nowrap">{{ c.created_at|date:"d/m/Y" }}</td>
+            <td class="text-nowrap">
+              <a href="/gestion/usuarios/{{ c.pk }}/editar/" class="btn btn-icon btn-outline-secondary btn-sm" title="Editar">
+                <i class="bi bi-pencil"></i>
+              </a>
+              <button class="btn btn-icon btn-outline-danger btn-sm" title="Desactivar"
+                onclick="confirmDeleteUser({{ c.pk }}, '{{ c.full_name|escapejs }}')">
+                <i class="bi bi-person-x"></i>
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(function() {
+  $('#usersTable').DataTable({
+    language: { url:'https://cdn.datatables.net/plug-ins/1.13.8/i18n/es-MX.json', emptyTable:'No hay usuarios registrados.' },
+    pageLength: 15,
+    order: [[0,'asc']],
+    dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+         "<'row'<'col-sm-12'B>>" +
+         "<'row'<'col-sm-12'tr>>" +
+         "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+    buttons: [
+      { extend:'excelHtml5', text:'<i class="bi bi-file-earmark-excel me-1"></i>Excel',
+        className:'btn btn-sm btn-success me-1', title:'Usuarios – Helpdesk TI',
+        exportOptions: { columns: ':visible:not(:last-child)' } },
+      { extend:'pdfHtml5',   text:'<i class="bi bi-file-earmark-pdf me-1"></i>PDF',
+        className:'btn btn-sm btn-danger me-1',  title:'Usuarios – Helpdesk TI',
+        orientation:'landscape', pageSize:'A4',
+        exportOptions: { columns: ':visible:not(:last-child)' } },
+      { extend:'print', text:'<i class="bi bi-printer me-1"></i>Imprimir',
+        className:'btn btn-sm btn-secondary',
+        exportOptions: { columns: ':visible:not(:last-child)' } },
+    ],
+    columnDefs: [{ orderable: false, targets: -1 }]
+  });
+});
+
+function confirmDeleteUser(pk, name) {
+  Swal.fire({
+    title: `¿Desactivar a ${name}?`,
+    text: 'El usuario no podrá iniciar sesión. Esta acción es reversible.',
+    icon: 'warning', showCancelButton: true,
+    confirmButtonColor:'#dc3545', cancelButtonColor:'#6c757d',
+    confirmButtonText:'Desactivar', cancelButtonText:'Cancelar'
+  }).then(r => {
+    if (r.isConfirmed) {
+      const form = document.createElement('form');
+      form.method = 'POST'; form.action = `/gestion/usuarios/${pk}/eliminar/`;
+      form.innerHTML = `<input type="hidden" name="csrfmiddlewaretoken" value="${getCsrf()}">`;
+      document.body.appendChild(form); form.submit();
+    }
+  });
+}
+</script>
+{% endblock %}

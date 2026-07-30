@@ -1,0 +1,475 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Helpdesk TI{% endblock %}</title>
+  <meta name="csrf-token" content="{{ csrf_token }}">
+
+  <!-- Google Fonts (igual al template FlexStart) -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Poppins:wght@300;400;500;600;700&family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap 5 (local vendor) -->
+  <link href="{% static 'assets/vendor/bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
+  <!-- Bootstrap Icons (local vendor) -->
+  <link href="{% static 'assets/vendor/bootstrap-icons/bootstrap-icons.css' %}" rel="stylesheet">
+  <!-- AOS (local vendor) -->
+  <link href="{% static 'assets/vendor/aos/aos.css' %}" rel="stylesheet">
+  <!-- Main CSS (FlexStart theme) -->
+  <link href="{% static 'assets/css/main.css' %}" rel="stylesheet">
+
+  <!-- DataTables + Bootstrap5 integration (CDN) -->
+  <link href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+  <link href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css" rel="stylesheet">
+
+  <!-- Select2 + Bootstrap5 theme (CDN) -->
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet">
+
+  <!-- Bootstrap FileInput (CDN) -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-fileinput/5.5.4/css/fileinput.min.css" rel="stylesheet">
+
+  <!-- FullCalendar (CDN) -->
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
+
+  <!-- jQuery UI (CDN) -->
+  <link href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css" rel="stylesheet">
+
+  <!-- Driver.js (CDN) -->
+  <link href="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.css" rel="stylesheet">
+
+  <!-- Animate.css (CDN) -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+
+  {% block extra_css %}{% endblock %}
+
+  <style>
+    /* ─── Layout sidebar + main ─────────────────────────────────── */
+    :root {
+      --sidebar-w: 255px;
+      --sidebar-collapsed-w: 68px;
+      --topbar-h: 58px;
+      --sidebar-bg: #012970;
+      --sidebar-active: #4154f1;
+      --sidebar-hover: rgba(255,255,255,.08);
+      --accent: #4154f1;
+    }
+    body { background: #f6f8fb; overflow-x: hidden; }
+
+    /* Sidebar */
+    #hd-sidebar {
+      position: fixed; top: 0; left: 0; height: 100vh;
+      width: var(--sidebar-w); background: var(--sidebar-bg);
+      color: #c7d5f0; z-index: 1050; transition: width .28s ease;
+      display: flex; flex-direction: column; overflow: hidden;
+      box-shadow: 2px 0 12px rgba(1,41,112,.18);
+    }
+    #hd-sidebar.collapsed { width: var(--sidebar-collapsed-w); }
+
+    .sb-brand {
+      height: var(--topbar-h); padding: 0 18px;
+      display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid rgba(255,255,255,.1); white-space: nowrap; overflow: hidden;
+    }
+    .sb-brand .brand-name { font-family: var(--heading-font, 'Nunito', sans-serif);
+      font-weight: 800; font-size: 1.1rem; color: #fff; }
+    #hd-sidebar.collapsed .brand-name { display: none; }
+
+    .sb-nav { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .sb-nav::-webkit-scrollbar { width: 3px; }
+    .sb-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 3px; }
+
+    .sb-section { padding: 14px 20px 4px; font-size: .67rem; text-transform: uppercase;
+      letter-spacing: 1.2px; color: rgba(255,255,255,.35); white-space: nowrap; }
+    #hd-sidebar.collapsed .sb-section { display: none; }
+
+    .sb-nav a {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 18px; margin: 2px 8px; border-radius: 7px;
+      color: #c7d5f0; text-decoration: none; white-space: nowrap;
+      transition: background .18s, color .18s; font-size: .88rem;
+    }
+    .sb-nav a:hover { background: var(--sidebar-hover); color: #fff; }
+    .sb-nav a.active { background: var(--sidebar-active); color: #fff; font-weight: 600; }
+    .sb-nav a i { font-size: 1.05rem; min-width: 20px; flex-shrink: 0; }
+    .sb-nav a .nav-lbl { overflow: hidden; }
+    #hd-sidebar.collapsed .nav-lbl { display: none; }
+
+    .sb-footer {
+      padding: 14px 16px; border-top: 1px solid rgba(255,255,255,.1);
+      display: flex; align-items: center; gap: 10px; white-space: nowrap;
+    }
+    .sb-footer .user-info { line-height: 1.3; overflow: hidden; }
+    .sb-footer .user-info .uname { font-size: .83rem; font-weight: 600; color: #fff; }
+    .sb-footer .user-info .urole { font-size: .72rem; color: rgba(255,255,255,.5); }
+    #hd-sidebar.collapsed .user-info { display: none; }
+
+    /* Main wrapper */
+    #hd-main {
+      margin-left: var(--sidebar-w);
+      min-height: 100vh; display: flex; flex-direction: column;
+      transition: margin-left .28s ease;
+    }
+    #hd-main.expanded { margin-left: var(--sidebar-collapsed-w); }
+
+    /* Topbar */
+    #hd-topbar {
+      position: sticky; top: 0; z-index: 1040;
+      height: var(--topbar-h); background: #fff;
+      border-bottom: 1px solid #e3e8f0;
+      display: flex; align-items: center; padding: 0 20px; gap: 10px;
+      box-shadow: 0 1px 5px rgba(1,41,112,.07);
+    }
+    #hd-topbar .page-title-bar {
+      font-family: var(--heading-font, 'Nunito', sans-serif);
+      font-weight: 700; font-size: .95rem; color: #012970; flex: 1; margin: 0;
+    }
+    #hd-topbar .btn-icon-top {
+      width: 34px; height: 34px; border-radius: 8px; padding: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 1px solid #dee2e6; background: #fff; color: #555;
+    }
+    #hd-topbar .btn-icon-top:hover { background: #f0f4ff; color: var(--accent); }
+
+    /* Page content */
+    #hd-content { padding: 22px 24px; flex: 1; }
+
+    /* Footer */
+    #hd-footer {
+      text-align: center; padding: 12px 24px;
+      font-size: .78rem; color: #8899aa;
+      border-top: 1px solid #e3e8f0; background: #fff;
+    }
+
+    /* ─── Cards / KPI ─────────────────────────────────────────── */
+    .kpi-card { border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(1,41,112,.08); }
+    .kpi-card .icon-wrap { width: 52px; height: 52px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; }
+    .kpi-card .kpi-num { font-size: 1.9rem; font-weight: 800; line-height: 1; color: #012970; }
+    .kpi-card .kpi-lbl { font-size: .78rem; color: #8899aa; margin-top: 2px; }
+
+    /* ─── DataTables overrides ────────────────────────────────── */
+    .dataTables_wrapper .dataTables_filter input { border-radius: 8px; border: 1px solid #ced4da; padding: 4px 10px; }
+    .dataTables_wrapper .dataTables_length select { border-radius: 8px; border: 1px solid #ced4da; padding: 3px 6px; }
+    .dataTables_wrapper .dataTables_paginate .paginate_button { border-radius: 6px !important; }
+    .dataTables_wrapper .dt-buttons { margin-bottom: 8px; }
+    .dataTables_wrapper .dt-buttons .btn { border-radius: 8px; font-size: .8rem; padding: 5px 12px; }
+    .dataTables_wrapper table.dataTable { border-collapse: collapse !important; }
+    .dataTables_wrapper table.dataTable thead th {
+      background: #012970; color: #fff; border: none;
+      font-size: .82rem; padding: 10px 12px;
+    }
+    .dataTables_wrapper table.dataTable tbody tr:hover td { background: rgba(65,84,241,.04); }
+    .dataTables_wrapper table.dataTable tbody td { font-size: .85rem; vertical-align: middle; }
+
+    /* ─── Misc helpers ────────────────────────────────────────── */
+    .btn-act { width: 30px; height: 30px; padding: 0;
+      display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; }
+    .overdue-row td { background: rgba(220,53,69,.04) !important; }
+    .badge { font-size: .74rem; }
+    #btn-tour { border-radius: 50px; box-shadow: 0 3px 10px rgba(1,41,112,.25); }
+
+    @media (max-width: 768px) {
+      #hd-sidebar { width: var(--sidebar-collapsed-w); }
+      #hd-sidebar .nav-lbl, #hd-sidebar .brand-name,
+      #hd-sidebar .sb-section, #hd-sidebar .user-info { display: none; }
+      #hd-main { margin-left: var(--sidebar-collapsed-w); }
+    }
+  </style>
+</head>
+<body>
+
+{% if user.is_authenticated %}
+<!-- ═══════════════════  SIDEBAR  ═══════════════════════════════════════ -->
+<nav id="hd-sidebar">
+  <!-- Brand -->
+  <div class="sb-brand">
+    <i class="bi bi-headset text-white fs-4"></i>
+    <span class="brand-name">Helpdesk TI</span>
+  </div>
+
+  <!-- Nav -->
+  <div class="sb-nav">
+
+    {% if user.is_superuser or user.support_agent %}
+    <div class="sb-section">Principal</div>
+    <a href="/dashboard/" {% if request.path == '/dashboard/' %}class="active"{% endif %}>
+      <i class="bi bi-speedometer2"></i><span class="nav-lbl">Dashboard</span>
+    </a>
+    {% endif %}
+
+    <div class="sb-section">Tickets</div>
+    <a href="/tickets/" {% if request.path == '/tickets/' %}class="active"{% endif %}>
+      <i class="bi bi-ticket-detailed"></i><span class="nav-lbl">Lista de Tickets</span>
+    </a>
+    <a href="/tickets/create/" {% if 'create' in request.path %}class="active"{% endif %}>
+      <i class="bi bi-plus-square"></i><span class="nav-lbl">Nuevo Ticket</span>
+    </a>
+
+    {% if user.is_superuser or user.support_agent %}
+    <a href="/calendar/" {% if '/calendar' in request.path %}class="active"{% endif %}>
+      <i class="bi bi-calendar3"></i><span class="nav-lbl">Calendario</span>
+    </a>
+    <a href="/reports/" {% if '/reports' in request.path %}class="active"{% endif %}>
+      <i class="bi bi-bar-chart-line"></i><span class="nav-lbl">Reportes</span>
+    </a>
+    {% endif %}
+
+    {% if user.is_superuser %}
+    <div class="sb-section">Administracion</div>
+    <a href="/gestion/usuarios/" {% if '/gestion/usuarios' in request.path %}class="active"{% endif %}>
+      <i class="bi bi-people"></i><span class="nav-lbl">Clientes</span>
+    </a>
+    <a href="/gestion/agentes/" {% if '/gestion/agentes' in request.path %}class="active"{% endif %}>
+      <i class="bi bi-person-badge"></i><span class="nav-lbl">Agentes</span>
+    </a>
+    <a href="/gestion/slas/" {% if '/gestion/slas' in request.path %}class="active"{% endif %}>
+      <i class="bi bi-shield-check"></i><span class="nav-lbl">SLA</span>
+    </a>
+    <a href="/gestion/equipos/" {% if '/gestion/equipos' in request.path %}class="active"{% endif %}>
+      <i class="bi bi-pc-display"></i><span class="nav-lbl">Equipos TI</span>
+    </a>
+    {% endif %}
+
+  </div><!-- /sb-nav -->
+
+  <!-- Footer usuario -->
+  <div class="sb-footer">
+    <div class="rounded-circle bg-white text-primary d-flex align-items-center justify-content-center flex-shrink-0"
+         style="width:34px;height:34px;font-weight:700;font-size:.85rem;">
+      {{ user.get_full_name|first|upper|default:user.username|first|upper }}
+    </div>
+    <div class="user-info">
+      <div class="uname">{{ user.get_full_name|default:user.username }}</div>
+      <div class="urole">
+        {% if user.is_superuser %}Administrador
+        {% elif user.support_agent %}{{ user.support_agent.role }}
+        {% else %}Cliente{% endif %}
+      </div>
+    </div>
+  </div>
+</nav>
+{% endif %}
+
+<!-- ═══════════════════  MAIN  ══════════════════════════════════════════ -->
+<div id="hd-main" {% if not user.is_authenticated %}style="margin-left:0"{% endif %}>
+
+  {% if user.is_authenticated %}
+  <!-- Topbar -->
+  <div id="hd-topbar">
+    <button id="sb-toggle" class="btn-icon-top me-1" title="Menú">
+      <i class="bi bi-list fs-5"></i>
+    </button>
+    <h6 class="page-title-bar">{% block page_title %}Centro de Soporte TI{% endblock %}</h6>
+
+    <!-- Tour guiado -->
+    <button id="btn-tour" class="btn btn-sm btn-outline-primary me-2" title="Tour guiado">
+      <i class="bi bi-question-circle me-1"></i>Ayuda
+    </button>
+
+    <!-- Logout -->
+    <form id="logout-form" action="/logout/" method="POST" class="d-inline">
+      {% csrf_token %}
+      <button type="submit" class="btn-icon-top" title="Cerrar sesión">
+        <i class="bi bi-box-arrow-right text-danger"></i>
+      </button>
+    </form>
+  </div>
+  {% endif %}
+
+  <!-- Mensajes Django → SweetAlert2 -->
+  {% if messages %}
+  <div id="django-messages" style="display:none">
+    {% for message in messages %}
+    <div data-tags="{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Contenido de la página -->
+  <div id="hd-content">
+    {% block content %}{% endblock %}
+  </div>
+
+  <div id="hd-footer">
+    © 2025 <strong>Helpdesk TI</strong> — Centro de Soporte y Mesa de Ayuda. Desarrollado con Django 5 &amp; Bootstrap 5.
+  </div>
+</div>
+
+<!-- ═══════════════════  SCRIPTS  ════════════════════════════════════════ -->
+
+<!-- jQuery 3 (DEBE ir primero) -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<!-- jQuery UI (drag & drop Kanban) -->
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+<!-- Bootstrap 5 (local vendor) -->
+<script src="{% static 'assets/vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+<!-- AOS (local vendor) -->
+<script src="{% static 'assets/vendor/aos/aos.js' %}"></script>
+<!-- Main JS del template (inicializa AOS, navmenu, etc.) -->
+<script src="{% static 'assets/js/main.js' %}"></script>
+
+<!-- DataTables core + Bootstrap5 + Buttons (CDN – deben cargar DESPUÉS de jQuery y Bootstrap) -->
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<!-- FullCalendar -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<!-- jQuery Validate -->
+<script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/localization/messages_es.min.js"></script>
+<!-- Select2 -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.full.min.js"></script>
+<!-- Bootstrap FileInput -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-fileinput/5.5.4/js/fileinput.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-fileinput/5.5.4/themes/bs5/theme.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-fileinput/5.5.4/js/locales/es.min.js"></script>
+<!-- Hotkeys.js -->
+<script src="https://cdn.jsdelivr.net/npm/hotkeys-js@3.13.7/dist/hotkeys.min.js"></script>
+<!-- Driver.js -->
+<script src="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.js.iife.js"></script>
+<!-- Day.js + plugins -->
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/locale/es.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/relativeTime.js"></script>
+
+<script>
+// ── Day.js setup ──────────────────────────────────────────────────────
+dayjs.locale('es');
+dayjs.extend(window.dayjs_plugin_relativeTime);
+
+// ── CSRF helper ───────────────────────────────────────────────────────
+function getCsrf() {
+  return $('[name=csrfmiddlewaretoken]').first().val() ||
+         $('meta[name="csrf-token"]').attr('content') || '';
+}
+
+// ── Sidebar toggle ────────────────────────────────────────────────────
+$(function () {
+  $('#sb-toggle').on('click', function () {
+    $('#hd-sidebar').toggleClass('collapsed');
+    $('#hd-main').toggleClass('expanded');
+  });
+});
+
+// ── Django messages → SweetAlert2 ────────────────────────────────────
+$(function () {
+  $('#django-messages [data-tags]').each(function () {
+    var tags = $(this).data('tags') || '';
+    var icon = 'info';
+    if (tags.indexOf('success') > -1) icon = 'success';
+    else if (tags.indexOf('error') > -1)   icon = 'error';
+    else if (tags.indexOf('warning') > -1) icon = 'warning';
+    Swal.fire({ icon: icon, title: $(this).text().trim(),
+      timer: 3500, showConfirmButton: false,
+      position: 'top-end', toast: true });
+  });
+});
+
+// ── Select2 global ───────────────────────────────────────────────────
+$(function () {
+  $('.select2').select2({ theme: 'bootstrap-5', language: 'es', width: '100%' });
+});
+
+// ── FileInput global ────────────────────────────────────────────────
+$(function () {
+  $('.file-input').fileinput({
+    language: 'es', theme: 'bs5', showUpload: false,
+    browseClass: 'btn btn-outline-primary',
+    allowedFileExtensions: ['jpg','jpeg','png','gif','pdf','doc','docx','xls','xlsx','zip','txt'],
+    maxFileSize: 10240,
+  });
+});
+
+// ── Tour guiado (Driver.js) – diferente para cada rol ──────────────
+$(function() {
+  const driver = window.driver.js.driver;
+  
+  {% if user.is_superuser %}
+  // Tour para Admin
+  const tourSteps = [
+    { element: '#hd-sidebar', popover: { title: 'Menú de Navegación', description: 'Desde aquí puedes acceder a todas las secciones del sistema. Como admin tienes acceso completo.', side: 'right', align: 'start' } },
+    { element: 'a[href="/dashboard/"]', popover: { title: 'Dashboard', description: 'Vista general con métricas clave: MTTR, cumplimiento SLA, tickets por categoría y estado.', side: 'right', align: 'start' } },
+    { element: 'a[href="/tickets/"]', popover: { title: 'Lista de Tickets', description: 'Ver todos los tickets del sistema. Puedes filtrar por estado, prioridad o categoría.', side: 'right', align: 'start' } },
+    { element: 'a[href="/gestion/usuarios/"]', popover: { title: 'Gestión de Clientes', description: 'Administra los usuarios clientes que pueden crear tickets.', side: 'right', align: 'start' } },
+    { element: 'a[href="/gestion/agentes/"]', popover: { title: 'Gestión de Agentes', description: 'Administra los agentes de soporte: Analistas, Especialistas y Supervisores.', side: 'right', align: 'start' } },
+    { element: 'a[href="/gestion/slas/"]', popover: { title: 'SLA (Acuerdos de Nivel de Servicio)', description: 'Define los tiempos de respuesta y resolución según prioridad.', side: 'right', align: 'start' } },
+    { popover: { title: '¡Todo listo!', description: 'Usa Alt+R para resolver tickets y Alt+A para asignar agentes desde el detalle de ticket. Puedes volver a ver este tour desde el botón de ayuda.' } }
+  ];
+  {% elif user.support_agent %}
+  // Tour para Agente
+  const tourSteps = [
+    { element: '#hd-sidebar', popover: { title: 'Menú de Navegación', description: 'Desde aquí accedes a tus herramientas de trabajo como agente de soporte.', side: 'right', align: 'start' } },
+    { element: 'a[href="/dashboard/"]', popover: { title: 'Dashboard', description: 'Visualiza métricas de rendimiento y estado de tickets.', side: 'right', align: 'start' } },
+    { element: 'a[href="/tickets/"]', popover: { title: 'Mis Tickets Asignados', description: 'Ver los tickets asignados a ti. Aquí trabajas en las solicitudes de los clientes.', side: 'right', align: 'start' } },
+    { element: 'a[href="/tickets/create/"]', popover: { title: 'Crear Ticket', description: 'Crea tickets para clientes. Si no especificas agente, el ticket se te asignará automáticamente.', side: 'right', align: 'start' } },
+    { element: 'a[href="/kanban/"]', popover: { title: 'Vista Kanban', description: 'Organiza tickets por prioridad arrastrando y soltando. Ideal para gestión visual.', side: 'right', align: 'start' } },
+    { element: 'a[href="/calendar/"]', popover: { title: 'Calendario', description: 'Programa mantenimientos y visualiza interrupciones de servicio.', side: 'right', align: 'start' } },
+    { popover: { title: 'Atajos de Teclado', description: 'Usa Alt+R para resolver tickets rápido y Alt+A para asignar agentes desde el detalle de ticket.' } }
+  ];
+  {% else %}
+  // Tour para Cliente
+  const tourSteps = [
+    { element: '#hd-sidebar', popover: { title: 'Menú de Navegación', description: 'Desde aquí puedes gestionar tus tickets de soporte.', side: 'right', align: 'start' } },
+    { element: 'a[href="/tickets/"]', popover: { title: 'Mis Tickets', description: 'Ver el estado de todos tus tickets: abiertos, en proceso o resueltos.', side: 'right', align: 'start' } },
+    { element: 'a[href="/tickets/create/"]', popover: { title: 'Crear Ticket', description: 'Reporta incidentes o solicita soporte técnico. Describe el problema con claridad.', side: 'right', align: 'start' } },
+    { popover: { title: '¡Listo para empezar!', description: 'Puedes crear un ticket ahora o explorar tus tickets existentes. Nuestro equipo responderá pronto.' } }
+  ];
+  {% endif %}
+  
+  const driverObj = driver({
+    showProgress: true,
+    steps: tourSteps,
+    nextBtnText: 'Siguiente',
+    prevBtnText: 'Anterior',
+    doneBtnText: 'Finalizar'
+  });
+  
+  // Botón tour en topbar
+  $('#btn-tour').on('click', function() {
+    driverObj.drive();
+  });
+  
+  // Auto-mostrar tour solo en primera visita
+  if (!localStorage.getItem('tourCompleted-{{ user.id }}')) {
+    setTimeout(function() {
+      driverObj.drive();
+      localStorage.setItem('tourCompleted-{{ user.id }}', 'true');
+    }, 800);
+  }
+});
+
+// ── Hotkeys globales: Ctrl+R (resolver) y Alt+A (asignar) ──────────
+hotkeys('ctrl+r', function(e) {
+  e.preventDefault();
+  console.log('🔥 Ctrl+R presionado');
+  var btn = document.getElementById('btn-resolve');
+  if (btn && !btn.disabled) {
+    btn.click();
+  }
+});
+hotkeys('alt+a', function(e) {
+  e.preventDefault();
+  var btn = document.getElementById('btn-assign');
+  if (btn && !btn.disabled) {
+    btn.click();
+  }
+});
+
+</script>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>
