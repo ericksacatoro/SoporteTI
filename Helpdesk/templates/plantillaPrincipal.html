@@ -8,7 +8,7 @@
   <meta name="csrf-token" content="{{ csrf_token }}">
 
   <!-- PWA meta tags -->
-  <link rel="manifest" href="/manifest.json">
+  <link rel="manifest" href="{% static 'manifest.json' %}">
   <meta name="theme-color" content="#012970">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -484,7 +484,7 @@ hotkeys('alt+a', function(e) {
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
-    navigator.serviceWorker.register('/static/serviceworker.js', { scope: '/' })
+    navigator.serviceWorker.register('/serviceworker.js', { scope: '/' })
       .catch(function(err) {
         console.warn('Service Worker no registrado:', err);
       });
