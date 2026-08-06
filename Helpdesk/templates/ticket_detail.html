@@ -49,7 +49,7 @@
               </ul>
             </div>
             {% if ticket.status != 'Resuelto' and ticket.status != 'Cerrado' %}
-            <button class="btn btn-sm btn-success" id="btn-resolve" onclick="resolveTicket()" title="Ctrl+R">
+            <button class="btn btn-sm btn-success" id="btn-resolve" onclick="resolveTicket()" title="Alt+R">
               <i class="bi bi-check-circle me-1"></i>Resolver
             </button>
             {% endif %}
@@ -72,7 +72,7 @@
           <i class="bi bi-keyboard text-primary"></i>
           <span class="d-flex align-items-center gap-1 {% if not can_change_status or ticket.status == 'Resuelto' or ticket.status == 'Cerrado' %}disabled{% endif %}"
                 title="{% if not can_change_status %}Sin permisos{% elif ticket.status == 'Resuelto' or ticket.status == 'Cerrado' %}Ticket no resoluble{% else %}Resuelve el ticket{% endif %}">
-            <kbd class="kbd">Ctrl</kbd>+<kbd class="kbd">R</kbd>
+            <kbd class="kbd">Alt</kbd>+<kbd class="kbd">R</kbd>
             <span class="ms-1">Resolver</span>
           </span>
 
