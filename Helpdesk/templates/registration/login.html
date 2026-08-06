@@ -50,13 +50,6 @@
     .input-group .form-control { border-radius: 0 10px 10px 0; }
     .toggle-pass { cursor: pointer; }
     .feature-badge { background: rgba(59,125,221,.08); border-radius: 8px; padding: 6px 10px; font-size: .75rem; }
-    #btn-install-pwa {
-      border-radius: 10px; font-size: .85rem; font-weight: 600;
-      border: 1.5px solid #198754; color: #198754;
-      background: rgba(25,135,84,.06);
-      transition: background .2s, color .2s;
-    }
-    #btn-install-pwa:hover { background: #198754; color: #fff; }
   </style>
 </head>
 <body>
@@ -109,11 +102,6 @@
       <button type="submit" class="btn btn-login btn-primary w-100 text-white mb-3">
         <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar Sesión
       </button>
-
-      <!-- Botón instalar PWA — visible solo cuando el navegador lo soporta -->
-      <button type="button" id="btn-install-pwa" class="btn w-100" style="display:none;">
-        <i class="bi bi-download me-2"></i>Instalar como App
-      </button>
     </form>
 
   <script src="https://cdn.jsdelivr.net/npm/jquery-3.7.1.min.js"></script>
@@ -156,7 +144,6 @@
     // PWA: capturar evento de instalación
     (function () {
       var deferredPrompt = null;
-      var btnInstall = document.getElementById('btn-install-pwa');
 
       // Service Worker
       if ('serviceWorker' in navigator) {
@@ -164,56 +151,43 @@
           .catch(function(err) { console.warn('SW:', err); });
       }
 
-      // Si el navegador no soporta PWA en absoluto, ocultar el botón
-      if (!('serviceWorker' in navigator)) {
-        btnInstall.style.display = 'none';
-      } else {
-        // Mostrar el botón por defecto — se ocultará si ya está instalada
-        btnInstall.style.display = 'block';
-      }
-
-      // Si ya está corriendo como PWA instalada, ocultar el botón
+      // Si ya está corriendo como PWA instalada, no hacer nada
       if (window.matchMedia('(display-mode: standalone)').matches ||
           window.navigator.standalone === true) {
-        btnInstall.style.display = 'none';
+        return;
       }
 
-      // Capturar el prompt cuando el navegador lo ofrece
+      // Capturar el prompt del navegador antes de que lo muestre por su cuenta
       window.addEventListener('beforeinstallprompt', function (e) {
         e.preventDefault();
         deferredPrompt = e;
-        btnInstall.style.display = 'block';
-      });
 
-      btnInstall.addEventListener('click', function () {
-        if (deferredPrompt) {
-          // Chrome/Edge: usar el prompt nativo
-          deferredPrompt.prompt();
-          deferredPrompt.userChoice.then(function (choice) {
-            if (choice.outcome === 'accepted') {
-              btnInstall.style.display = 'none';
-            }
-            deferredPrompt = null;
-          });
-        } else {
-          // Fallback: instrucciones manuales según plataforma
-          var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-          var msg = isIOS
-            ? 'En Safari: toca el botón Compartir y selecciona "Agregar a pantalla de inicio".'
-            : 'En Chrome: abre el menú (⋮) y selecciona "Instalar aplicación" o "Agregar a pantalla de inicio".';
+        // Solo mostrar el alert si el usuario no lo rechazó antes
+        if (sessionStorage.getItem('pwa_prompt_dismissed')) return;
+
+        setTimeout(function () {
           Swal.fire({
             icon: 'info',
             title: 'Instalar Helpdesk TI',
-            text: msg,
-            confirmButtonText: 'Entendido',
-            confirmButtonColor: '#198754',
+            html: 'Puedes instalar esta aplicación en tu dispositivo y acceder a ella directamente, sin abrir el navegador.',
+            confirmButtonText: 'Instalar',
+            cancelButtonText: 'Ahora no',
+            showCancelButton: true,
+            confirmButtonColor: '#012970',
+            cancelButtonColor: '#6c757d',
+            reverseButtons: false,
+          }).then(function (result) {
+            if (result.isConfirmed && deferredPrompt) {
+              deferredPrompt.prompt();
+              deferredPrompt.userChoice.then(function () {
+                deferredPrompt = null;
+              });
+            } else {
+              // Guardar que el usuario dijo "ahora no" para no molestar en esta sesión
+              sessionStorage.setItem('pwa_prompt_dismissed', '1');
+            }
           });
-        }
-      });
-
-      window.addEventListener('appinstalled', function () {
-        btnInstall.style.display = 'none';
-        deferredPrompt = null;
+        }, 1500); // pequeña demora para que cargue la página primero
       });
     })();
 
