@@ -33,7 +33,6 @@
     }
     .login-logo { font-size: 3rem; color: #3b7ddd; }
     .login-title { font-weight: 800; color: #1a1f2e; }
-    .login-subtitle { color: #6c757d; font-size: .9rem; }
     .btn-login {
       background: linear-gradient(135deg, #3b7ddd, #1a4fba);
       border: none; border-radius: 10px; padding: 12px;
@@ -49,18 +48,15 @@
     .input-group-text { border-radius: 10px 0 0 10px; background: #f8f9fa; border: 1.5px solid #dee2e6; }
     .input-group .form-control { border-radius: 0 10px 10px 0; }
     .toggle-pass { cursor: pointer; }
-    .feature-badge { background: rgba(59,125,221,.08); border-radius: 8px; padding: 6px 10px; font-size: .75rem; }
   </style>
 </head>
 <body>
   <div class="login-card">
-    <!-- Logo y título -->
     <div class="text-center mb-4">
       <div class="login-logo mb-2"><i class="bi bi-headset"></i></div>
       <h4 class="login-title">Helpdesk TI</h4>
     </div>
 
-    <!-- Mensajes de error -->
     {% if form.errors %}
     <div class="alert alert-danger py-2 small">
       <i class="bi bi-exclamation-circle me-1"></i>
@@ -73,7 +69,6 @@
     {% endfor %}
     {% endif %}
 
-    <!-- Formulario -->
     <form method="post" id="loginForm" novalidate>
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ next }}">
@@ -92,27 +87,18 @@
         <div class="input-group">
           <span class="input-group-text"><i class="bi bi-lock text-primary"></i></span>
           <input type="password" name="password" id="password" class="form-control"
-           autocomplete="current-password">
+            autocomplete="current-password">
           <button type="button" class="btn btn-outline-secondary toggle-pass rounded-end" id="togglePass">
             <i class="bi bi-eye" id="toggleIcon"></i>
           </button>
         </div>
       </div>
 
-      <button type="submit" class="btn btn-login btn-primary w-100 text-white mb-3">
+      <button type="submit" class="btn btn-login btn-primary w-100 text-white">
         <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar Sesión
       </button>
     </form>
-
-    <!-- Botón instalar PWA -->
-    <div class="mt-2">
-      <button type="button" id="btn-install-pwa"
-        style="width:100%;border-radius:10px;padding:10px;font-size:.9rem;font-weight:600;
-               border:1.5px solid #012970;color:#012970;background:rgba(1,41,112,.05);
-               cursor:pointer;transition:background .2s,color .2s;">
-        <i class="bi bi-download me-2"></i>Instalar App
-      </button>
-    </div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -151,60 +137,11 @@
       unhighlight: function(el) { $(el).removeClass('is-invalid'); }
     });
 
-    // Service Worker
+    // Service Worker (silencioso, solo para PWA)
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/serviceworker.js', { scope: '/' })
         .catch(function(err) { console.warn('SW:', err); });
     }
-
-    // Botón instalar PWA
-    (function() {
-      var deferredPrompt = null;
-      var btn = document.getElementById('btn-install-pwa');
-
-      // Ocultar solo si ya está corriendo como app instalada
-      if (window.matchMedia('(display-mode: standalone)').matches ||
-          window.navigator.standalone === true) {
-        btn.parentElement.style.display = 'none';
-        return;
-      }
-
-      // Capturar prompt nativo si el navegador lo ofrece
-      window.addEventListener('beforeinstallprompt', function(e) {
-        e.preventDefault();
-        deferredPrompt = e;
-      });
-
-      btn.addEventListener('mouseover', function() { btn.style.background = '#012970'; btn.style.color = '#fff'; });
-      btn.addEventListener('mouseout',  function() { btn.style.background = 'rgba(1,41,112,.05)'; btn.style.color = '#012970'; });
-
-      btn.addEventListener('click', function() {
-        if (deferredPrompt) {
-          // Chrome/Edge: diálogo nativo del SO
-          deferredPrompt.prompt();
-          deferredPrompt.userChoice.then(function(choice) {
-            if (choice.outcome === 'accepted') btn.parentElement.style.display = 'none';
-            deferredPrompt = null;
-          });
-        } else {
-          // Fallback: instrucciones según plataforma
-          var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-          Swal.fire({
-            icon: 'info',
-            title: 'Instalar Helpdesk TI',
-            html: isIOS
-              ? 'En Safari toca <strong>Compartir</strong> y luego <strong>"Agregar a pantalla de inicio"</strong>.'
-              : 'En Chrome abre el menú <strong>⋮</strong> y selecciona <strong>"Instalar aplicación"</strong>.',
-            confirmButtonText: 'Entendido',
-            confirmButtonColor: '#012970',
-          });
-        }
-      });
-
-      window.addEventListener('appinstalled', function() {
-        btn.parentElement.style.display = 'none';
-      });
-    })();
 
     // Mensaje de bienvenida (solo primera visita)
     if (!sessionStorage.getItem('login_visited')) {
