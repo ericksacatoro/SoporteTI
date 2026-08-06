@@ -18,7 +18,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'Helpdesk',
-    'pwa',
 ]
 
 MIDDLEWARE = [
@@ -112,27 +111,3 @@ SESSION_COOKIE_AGE     = 28800  # 8 horas
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
-
-# ─── PWA (Progressive Web App) ───────────────────────────────────────────────
-PWA_APP_NAME        = 'Helpdesk TI'
-PWA_APP_DESCRIPTION = 'Sistema de gestión de tickets de soporte técnico'
-PWA_APP_THEME_COLOR      = '#012970'
-PWA_APP_BACKGROUND_COLOR = '#ffffff'
-PWA_APP_DISPLAY     = 'standalone'
-PWA_APP_SCOPE       = '/'
-PWA_APP_ORIENTATION = 'any'
-PWA_APP_START_URL   = '/tickets/'
-PWA_APP_STATUS_BAR_COLOR = 'default'
-PWA_APP_LANG        = 'es-EC'
-
-PWA_APP_ICONS = [
-    {'src': '/static/pwa_icon.png', 'sizes': '192x192', 'type': 'image/png'},
-    {'src': '/static/pwa_icon.png', 'sizes': '512x512', 'type': 'image/png'},
-]
-PWA_APP_ICONS_APPLE = [
-    {'src': '/static/pwa_icon.png', 'sizes': '192x192', 'type': 'image/png'},
-]
-PWA_APP_SPLASH_SCREEN = [
-    {'src': '/static/pwa_icon.png', 'media': '(device-width: 320px) and (device-height: 568px)'},
-]
-PWA_SERVICE_WORKER_PATH = os.path.join(BASE_DIR, 'staticfiles', 'serviceworker.js')

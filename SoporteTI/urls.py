@@ -7,9 +7,6 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
 
-    # PWA (manifest.json + serviceworker.js) — debe ir antes de las rutas de la app
-    path('', include('pwa.urls')),
-
     # Login nativo de Django con plantilla personalizada
     path('login/', auth_views.LoginView.as_view(
         template_name='registration/login.html',

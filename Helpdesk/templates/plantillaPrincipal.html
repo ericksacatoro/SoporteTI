@@ -1,5 +1,4 @@
 {% load static %}
-{% load pwa %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -7,7 +6,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Helpdesk TI{% endblock %}</title>
   <meta name="csrf-token" content="{{ csrf_token }}">
-  {% progressive_web_app_meta %}
+
+  <!-- PWA meta tags -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#012970">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Helpdesk TI">
+  <link rel="apple-touch-icon" href="{% static 'pwa_icon.png' %}">
 
   <!-- Google Fonts (igual al template FlexStart) -->
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Poppins:wght@300;400;500;600;700&family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
@@ -453,10 +460,9 @@ $(function() {
   }
 });
 
-// ── Hotkeys globales: Ctrl+R (resolver) y Alt+A (asignar) ──────────
-hotkeys('ctrl+r', function(e) {
+// ── Hotkeys globales: Alt+R (resolver) y Alt+A (asignar) ──────────
+hotkeys('alt+r', function(e) {
   e.preventDefault();
-  console.log('🔥 Ctrl+R presionado');
   var btn = document.getElementById('btn-resolve');
   if (btn && !btn.disabled) {
     btn.click();
@@ -473,5 +479,17 @@ hotkeys('alt+a', function(e) {
 </script>
 
 {% block extra_js %}{% endblock %}
+
+<!-- PWA: registrar Service Worker -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/static/serviceworker.js', { scope: '/' })
+      .catch(function(err) {
+        console.warn('Service Worker no registrado:', err);
+      });
+  });
+}
+</script>
 </body>
 </html>
