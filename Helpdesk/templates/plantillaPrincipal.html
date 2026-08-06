@@ -277,6 +277,12 @@
       <i class="bi bi-question-circle me-1"></i>Ayuda
     </button>
 
+    <!-- Instalar PWA (solo visible si el navegador soporta instalación) -->
+    <button id="btn-install-pwa" class="btn btn-sm btn-outline-success me-2"
+            title="Instalar app en tu dispositivo" style="display:none;">
+      <i class="bi bi-download me-1"></i>Instalar App
+    </button>
+
     <!-- Logout -->
     <form id="logout-form" action="/logout/" method="POST" class="d-inline">
       {% csrf_token %}
@@ -490,6 +496,41 @@ if ('serviceWorker' in navigator) {
       });
   });
 }
+</script>
+
+<!-- PWA: botón de instalación -->
+<script>
+(function () {
+  var deferredPrompt = null;
+  var btnInstall = document.getElementById('btn-install-pwa');
+
+  // El navegador captura el evento antes de mostrar su propio prompt
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();           // evita el mini-banner automático del navegador
+    deferredPrompt = e;
+    if (btnInstall) btnInstall.style.display = 'inline-flex'; // muestra el botón
+  });
+
+  // Cuando el usuario hace clic en "Instalar App"
+  if (btnInstall) {
+    btnInstall.addEventListener('click', function () {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();    // lanza el diálogo nativo del SO
+      deferredPrompt.userChoice.then(function (choice) {
+        if (choice.outcome === 'accepted') {
+          btnInstall.style.display = 'none'; // ya instalado, ocultar botón
+        }
+        deferredPrompt = null;
+      });
+    });
+  }
+
+  // Si ya está instalada como PWA, ocultar el botón
+  window.addEventListener('appinstalled', function () {
+    if (btnInstall) btnInstall.style.display = 'none';
+    deferredPrompt = null;
+  });
+})();
 </script>
 </body>
 </html>
