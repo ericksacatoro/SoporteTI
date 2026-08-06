@@ -164,6 +164,21 @@
           .catch(function(err) { console.warn('SW:', err); });
       }
 
+      // Si el navegador no soporta PWA en absoluto, ocultar el botón
+      if (!('serviceWorker' in navigator)) {
+        btnInstall.style.display = 'none';
+      } else {
+        // Mostrar el botón por defecto — se ocultará si ya está instalada
+        btnInstall.style.display = 'block';
+      }
+
+      // Si ya está corriendo como PWA instalada, ocultar el botón
+      if (window.matchMedia('(display-mode: standalone)').matches ||
+          window.navigator.standalone === true) {
+        btnInstall.style.display = 'none';
+      }
+
+      // Capturar el prompt cuando el navegador lo ofrece
       window.addEventListener('beforeinstallprompt', function (e) {
         e.preventDefault();
         deferredPrompt = e;
@@ -171,14 +186,29 @@
       });
 
       btnInstall.addEventListener('click', function () {
-        if (!deferredPrompt) return;
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then(function (choice) {
-          if (choice.outcome === 'accepted') {
-            btnInstall.style.display = 'none';
-          }
-          deferredPrompt = null;
-        });
+        if (deferredPrompt) {
+          // Chrome/Edge: usar el prompt nativo
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then(function (choice) {
+            if (choice.outcome === 'accepted') {
+              btnInstall.style.display = 'none';
+            }
+            deferredPrompt = null;
+          });
+        } else {
+          // Fallback: instrucciones manuales según plataforma
+          var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+          var msg = isIOS
+            ? 'En Safari: toca el botón Compartir y selecciona "Agregar a pantalla de inicio".'
+            : 'En Chrome: abre el menú (⋮) y selecciona "Instalar aplicación" o "Agregar a pantalla de inicio".';
+          Swal.fire({
+            icon: 'info',
+            title: 'Instalar Helpdesk TI',
+            text: msg,
+            confirmButtonText: 'Entendido',
+            confirmButtonColor: '#198754',
+          });
+        }
       });
 
       window.addEventListener('appinstalled', function () {

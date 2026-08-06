@@ -504,28 +504,48 @@ if ('serviceWorker' in navigator) {
   var deferredPrompt = null;
   var btnInstall = document.getElementById('btn-install-pwa');
 
-  // El navegador captura el evento antes de mostrar su propio prompt
+  // Ocultar si no hay soporte o si ya está instalada como PWA
+  if (!('serviceWorker' in navigator) ||
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true) {
+    if (btnInstall) btnInstall.style.display = 'none';
+  } else {
+    // Mostrar por defecto — el navegador confirmará si es instalable
+    if (btnInstall) btnInstall.style.display = 'inline-flex';
+  }
+
   window.addEventListener('beforeinstallprompt', function (e) {
-    e.preventDefault();           // evita el mini-banner automático del navegador
+    e.preventDefault();
     deferredPrompt = e;
-    if (btnInstall) btnInstall.style.display = 'inline-flex'; // muestra el botón
+    if (btnInstall) btnInstall.style.display = 'inline-flex';
   });
 
-  // Cuando el usuario hace clic en "Instalar App"
   if (btnInstall) {
     btnInstall.addEventListener('click', function () {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();    // lanza el diálogo nativo del SO
-      deferredPrompt.userChoice.then(function (choice) {
-        if (choice.outcome === 'accepted') {
-          btnInstall.style.display = 'none'; // ya instalado, ocultar botón
-        }
-        deferredPrompt = null;
-      });
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(function (choice) {
+          if (choice.outcome === 'accepted') {
+            btnInstall.style.display = 'none';
+          }
+          deferredPrompt = null;
+        });
+      } else {
+        var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+        var msg = isIOS
+          ? 'En Safari: toca el botón Compartir y selecciona "Agregar a pantalla de inicio".'
+          : 'En Chrome: abre el menú (⋮) y selecciona "Instalar aplicación" o "Agregar a pantalla de inicio".';
+        Swal.fire({
+          icon: 'info',
+          title: 'Instalar Helpdesk TI',
+          text: msg,
+          confirmButtonText: 'Entendido',
+          confirmButtonColor: '#198754',
+        });
+      }
     });
   }
 
-  // Si ya está instalada como PWA, ocultar el botón
   window.addEventListener('appinstalled', function () {
     if (btnInstall) btnInstall.style.display = 'none';
     deferredPrompt = null;
