@@ -5,6 +5,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Iniciar Sesión – Helpdesk TI</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="{% static 'manifest.json' %}">
+  <meta name="theme-color" content="#012970">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Helpdesk TI">
+  <link rel="apple-touch-icon" href="{% static 'pwa_icon.png' %}">
+
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -42,6 +50,13 @@
     .input-group .form-control { border-radius: 0 10px 10px 0; }
     .toggle-pass { cursor: pointer; }
     .feature-badge { background: rgba(59,125,221,.08); border-radius: 8px; padding: 6px 10px; font-size: .75rem; }
+    #btn-install-pwa {
+      border-radius: 10px; font-size: .85rem; font-weight: 600;
+      border: 1.5px solid #198754; color: #198754;
+      background: rgba(25,135,84,.06);
+      transition: background .2s, color .2s;
+    }
+    #btn-install-pwa:hover { background: #198754; color: #fff; }
   </style>
 </head>
 <body>
@@ -91,8 +106,13 @@
         </div>
       </div>
 
-      <button type="submit" class="btn btn-login btn-primary w-100 text-white">
+      <button type="submit" class="btn btn-login btn-primary w-100 text-white mb-3">
         <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar Sesión
+      </button>
+
+      <!-- Botón instalar PWA — visible solo cuando el navegador lo soporta -->
+      <button type="button" id="btn-install-pwa" class="btn w-100" style="display:none;">
+        <i class="bi bi-download me-2"></i>Instalar como App
       </button>
     </form>
 
@@ -130,10 +150,44 @@
         el.closest('.input-group').after(err);
       },
       highlight:   function(el) { $(el).addClass('is-invalid').removeClass('is-valid'); },
-      unhighlight: function(el) { $(el).removeClass('is-invalid').addClass('is-valid'); }
+      unhighlight: function(el) { $(el).removeClass('is-invalid'); }
     });
 
-    // Mensaje de bienvenida (sólo primera visita)
+    // PWA: capturar evento de instalación
+    (function () {
+      var deferredPrompt = null;
+      var btnInstall = document.getElementById('btn-install-pwa');
+
+      // Service Worker
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/serviceworker.js', { scope: '/' })
+          .catch(function(err) { console.warn('SW:', err); });
+      }
+
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        deferredPrompt = e;
+        btnInstall.style.display = 'block';
+      });
+
+      btnInstall.addEventListener('click', function () {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(function (choice) {
+          if (choice.outcome === 'accepted') {
+            btnInstall.style.display = 'none';
+          }
+          deferredPrompt = null;
+        });
+      });
+
+      window.addEventListener('appinstalled', function () {
+        btnInstall.style.display = 'none';
+        deferredPrompt = null;
+      });
+    })();
+
+    // Mensaje de bienvenida (solo primera visita)
     if (!sessionStorage.getItem('login_visited')) {
       sessionStorage.setItem('login_visited', '1');
       setTimeout(() => {
