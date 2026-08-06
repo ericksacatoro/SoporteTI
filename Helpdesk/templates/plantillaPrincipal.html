@@ -466,14 +466,21 @@ $(function() {
   }
 });
 
-// ── Hotkeys globales: Alt+R (resolver) y Alt+A (asignar) ──────────
-hotkeys('alt+r', function(e) {
-  e.preventDefault();
-  var btn = document.getElementById('btn-resolve');
-  if (btn && !btn.disabled) {
-    btn.click();
+// ── Hotkeys globales: Ctrl+R (resolver) y Alt+A (asignar) ──────────
+// Ctrl+R se intercepta en fase de captura para evitar que el navegador recargue la página
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.key === 'r') {
+    var btn = document.getElementById('btn-resolve');
+    if (btn) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!btn.disabled) {
+        btn.click();
+      }
+    }
   }
-});
+}, true); // true = fase de captura, tiene prioridad sobre el navegador
+
 hotkeys('alt+a', function(e) {
   e.preventDefault();
   var btn = document.getElementById('btn-assign');
