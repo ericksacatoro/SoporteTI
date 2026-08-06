@@ -99,10 +99,20 @@
         </div>
       </div>
 
-      <button type="submit" class="btn btn-login btn-primary w-100 text-white">
+      <button type="submit" class="btn btn-login btn-primary w-100 text-white mb-3">
         <i class="bi bi-box-arrow-in-right me-2"></i>Iniciar Sesión
       </button>
     </form>
+
+    <!-- Botón instalar PWA -->
+    <div class="mt-2" id="pwa-install-wrapper" style="display:none;">
+      <button type="button" id="btn-install-pwa"
+        style="width:100%;border-radius:10px;padding:10px;font-size:.9rem;font-weight:600;
+               border:1.5px solid #012970;color:#012970;background:rgba(1,41,112,.05);
+               cursor:pointer;transition:background .2s,color .2s;">
+        <i class="bi bi-download me-2"></i>Instalar App
+      </button>
+    </div>
 
   <script src="https://cdn.jsdelivr.net/npm/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -146,6 +156,54 @@
       navigator.serviceWorker.register('/serviceworker.js', { scope: '/' })
         .catch(function(err) { console.warn('SW:', err); });
     }
+
+    // Botón instalar PWA
+    (function() {
+      var deferredPrompt = null;
+      var wrapper = document.getElementById('pwa-install-wrapper');
+      var btn     = document.getElementById('btn-install-pwa');
+
+      // No mostrar si ya está corriendo como app instalada
+      if (window.matchMedia('(display-mode: standalone)').matches ||
+          window.navigator.standalone === true) return;
+
+      // Capturar el prompt nativo del navegador
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        deferredPrompt = e;
+        wrapper.style.display = 'block';
+      });
+
+      // Hover
+      btn.addEventListener('mouseover',  function() { btn.style.background = '#012970'; btn.style.color = '#fff'; });
+      btn.addEventListener('mouseout',   function() { btn.style.background = 'rgba(1,41,112,.05)'; btn.style.color = '#012970'; });
+
+      btn.addEventListener('click', function() {
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then(function(choice) {
+            if (choice.outcome === 'accepted') wrapper.style.display = 'none';
+            deferredPrompt = null;
+          });
+        } else {
+          // Fallback para iOS y navegadores sin prompt nativo
+          var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+          Swal.fire({
+            icon: 'info',
+            title: 'Instalar Helpdesk TI',
+            html: isIOS
+              ? 'En Safari toca <strong>Compartir</strong> y luego <strong>"Agregar a pantalla de inicio"</strong>.'
+              : 'En Chrome abre el menú <strong>⋮</strong> y selecciona <strong>"Instalar aplicación"</strong>.',
+            confirmButtonText: 'Entendido',
+            confirmButtonColor: '#012970',
+          });
+        }
+      });
+
+      window.addEventListener('appinstalled', function() {
+        wrapper.style.display = 'none';
+      });
+    })();
 
     // Mensaje de bienvenida (solo primera visita)
     if (!sessionStorage.getItem('login_visited')) {
