@@ -1,4 +1,5 @@
 {% load static %}
+{% load pwa %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -6,6 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Helpdesk TI{% endblock %}</title>
   <meta name="csrf-token" content="{{ csrf_token }}">
+  {% progressive_web_app_meta %}
 
   <!-- Google Fonts (igual al template FlexStart) -->
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Poppins:wght@300;400;500;600;700&family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
