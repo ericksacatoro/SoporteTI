@@ -141,70 +141,81 @@
       unhighlight: function(el) { $(el).removeClass('is-invalid'); }
     });
 
-    // PWA: capturar evento de instalación
-    (function () {
-      var deferredPrompt = null;
+    // PWA: Service Worker + capturar prompt nativo
+    window._pwaDeferredPrompt = null;
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/serviceworker.js', { scope: '/' })
+        .catch(function(err) { console.warn('SW:', err); });
+    }
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      window._pwaDeferredPrompt = e;
+    });
+    window.addEventListener('appinstalled', function() {
+      localStorage.setItem('pwa_dismissed', '1');
+      window._pwaDeferredPrompt = null;
+    });
 
-      // Service Worker
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/serviceworker.js', { scope: '/' })
-          .catch(function(err) { console.warn('SW:', err); });
-      }
+    // Mensaje de bienvenida → luego prompt PWA (encadenados para no pisarse)
+    (function() {
+      var showPWAPrompt = function() {
+        if (window.matchMedia('(display-mode: standalone)').matches ||
+            window.navigator.standalone === true) return;
+        if (localStorage.getItem('pwa_dismissed')) return;
 
-      // Si ya está corriendo como PWA instalada, no hacer nada
-      if (window.matchMedia('(display-mode: standalone)').matches ||
-          window.navigator.standalone === true) {
-        return;
-      }
-
-      // Capturar el prompt del navegador antes de que lo muestre por su cuenta
-      window.addEventListener('beforeinstallprompt', function (e) {
-        e.preventDefault();
-        deferredPrompt = e;
-
-        // Solo mostrar el alert si el usuario no lo rechazó antes
-        if (sessionStorage.getItem('pwa_prompt_dismissed')) return;
-
-        setTimeout(function () {
-          Swal.fire({
-            icon: 'info',
-            title: 'Instalar Helpdesk TI',
-            html: 'Puedes instalar esta aplicación en tu dispositivo y acceder a ella directamente, sin abrir el navegador.',
-            confirmButtonText: 'Instalar',
-            cancelButtonText: 'Ahora no',
-            showCancelButton: true,
-            confirmButtonColor: '#012970',
-            cancelButtonColor: '#6c757d',
-            reverseButtons: false,
-          }).then(function (result) {
-            if (result.isConfirmed && deferredPrompt) {
-              deferredPrompt.prompt();
-              deferredPrompt.userChoice.then(function () {
-                deferredPrompt = null;
+        Swal.fire({
+          icon: 'info',
+          title: 'Instalar Helpdesk TI',
+          html: 'Instala esta app en tu dispositivo para acceder más rápido, sin abrir el navegador.',
+          confirmButtonText: '<i class="bi bi-download me-1"></i> Instalar',
+          cancelButtonText: 'Ahora no',
+          showCancelButton: true,
+          confirmButtonColor: '#012970',
+          cancelButtonColor: '#6c757d',
+        }).then(function (result) {
+          if (result.isConfirmed) {
+            if (window._pwaDeferredPrompt) {
+              window._pwaDeferredPrompt.prompt();
+              window._pwaDeferredPrompt.userChoice.then(function () {
+                window._pwaDeferredPrompt = null;
               });
             } else {
-              // Guardar que el usuario dijo "ahora no" para no molestar en esta sesión
-              sessionStorage.setItem('pwa_prompt_dismissed', '1');
+              var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+              Swal.fire({
+                icon: 'info',
+                title: 'Cómo instalar',
+                html: isIOS
+                  ? 'En Safari: toca <strong>Compartir</strong> y luego <strong>"Agregar a pantalla de inicio"</strong>.'
+                  : 'En Chrome: abre el menú <strong>⋮</strong> y selecciona <strong>"Instalar aplicación"</strong>.',
+                confirmButtonText: 'Entendido',
+                confirmButtonColor: '#012970',
+              });
             }
-          });
-        }, 1500); // pequeña demora para que cargue la página primero
-      });
-    })();
+          } else {
+            localStorage.setItem('pwa_dismissed', '1');
+          }
+        });
+      };
 
-    // Mensaje de bienvenida (solo primera visita)
-    if (!sessionStorage.getItem('login_visited')) {
-      sessionStorage.setItem('login_visited', '1');
-      setTimeout(() => {
+      if (!sessionStorage.getItem('login_visited')) {
+        sessionStorage.setItem('login_visited', '1');
+        // Primero bienvenida, luego PWA al cerrar
         Swal.fire({
           icon: 'info',
           title: 'Bienvenido al Sistema',
           html: 'Inicia sesión con tus credenciales para acceder al <strong>Centro de Soporte TI</strong>.',
           confirmButtonText: 'Entendido',
           confirmButtonColor: '#3b7ddd',
-          timer: 6000,
+          timer: 5000,
+          timerProgressBar: true,
+        }).then(function() {
+          setTimeout(showPWAPrompt, 300);
         });
-      }, 500);
-    }
+      } else {
+        // Visitas siguientes: solo prompt PWA
+        setTimeout(showPWAPrompt, 800);
+      }
+    })();
   </script>
 </body>
 </html>
